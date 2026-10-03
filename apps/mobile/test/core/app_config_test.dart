@@ -28,7 +28,9 @@ void main() {
       final client = ApiClient(env: AppEnv.mock);
       final res = await client.dio.get('/health');
       expect(res.statusCode, 200);
-      expect(res.data, {'status': 'ok', 'env': 'mock'});
+      expect(res.data['status'], 'ok');
+      expect(res.data['env'], 'mock');
+      expect(res.data['db'], 'ok');
     });
 
     test('unregistered path returns 501', () async {

@@ -85,3 +85,35 @@ Date: 2026-10-03
 - `npm install` in `apps/api` warns that install scripts (prisma, esbuild,
   better-sqlite3) are "not yet covered by allowScripts" (npm 11.19 supply-chain
   feature); scripts did run (client generated, native module loads).
+
+---
+
+# Auth vertical slice — findings
+
+Date: 2026-10-03
+
+- **Prisma 7 migrations:** `prisma migrate dev` does NOT regenerate the client
+  (unlike v5/6) — run `npx prisma generate` manually after schema changes or
+  the new models are missing from `@prisma/client` types.
+- **KycStep composite key:** `@@id([userId, step])` needs an explicit
+  back-relation field on `User` or Prisma errors on import.
+- **Vitest + shared SQLite:** two test files opening `dev.db` concurrently can
+  hit `SQLITE_BUSY`; `fileParallelism: false` in `vitest.config.ts` keeps the
+  suite deterministic.
+- **Dio interceptor order:** `LogInterceptor` added *before* the auth wrapper
+  so dev logs don't print `Authorization` headers.
+- **Mock adapter (in-process):** Dio drops the `/api/v1` base-path segment in
+  `options.uri.path` for some requests → route with `endsWith('/auth/otp/…')`
+  not `== '/api/v1/…'`. 204 responses must return an empty body **without**
+  a JSON content-type or the transformer trips.
+- **Bearer guard in mock:** `/me` + `/auth/logout` return 401 without
+  `Authorization`, which is what proves the interceptor + `TokenStore` wiring
+  in `test/auth_flow_test.dart` (mock otherwise ignores the token).
+- **flutter_secure_storage in tests:** platform channel missing → static
+  in-memory fallback in `TokenStore` (shared across instances, cleared in
+  `setUp` to stop cross-test leakage).
+- **Null-aware elements (Dart 3.13):** `{'name': ?name}` replaces
+  `if (name != null) 'name': name` — the `use_null_aware_elements` lint is on
+  by default and gates the analyze=0 CI job.
+- **JWT:** `jose` (ESM, no deps) instead of `jsonwebtoken`; `AUTH_SECRET`
+  defaults to a dev-only value in `src/config.ts` — production must set it.

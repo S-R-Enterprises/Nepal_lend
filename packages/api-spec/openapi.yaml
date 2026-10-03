@@ -65,6 +65,8 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/OtpChallenge" }
+        "400":
+          $ref: "#/components/responses/Unprocessable"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -85,6 +87,8 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AuthSession" }
+        "400":
+          $ref: "#/components/responses/Unprocessable"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -92,9 +96,13 @@ paths:
     post:
       tags: [auth]
       operationId: logout
-      summary: Invalidate the presented refresh token
+      summary: Revoke all refresh tokens for the current user
+      security:
+        - bearerAuth: []
       responses:
         "204": { description: Logged out }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/me:
     get:
@@ -123,6 +131,10 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/User" }
+        "400":
+          $ref: "#/components/responses/Unprocessable"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/me/kyc:
     get:
@@ -544,6 +556,10 @@ components:
       properties:
         name: { type: string, minLength: 1 }
         email: { type: [string, "null"], format: email }
+        role:
+          type: string
+          enum: [borrower, lender]
+          description: Role chosen at onboarding; kept in sync after login
 
     KycState:
       type: string

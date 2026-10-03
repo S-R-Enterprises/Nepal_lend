@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/state/auth_controller.dart';
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../data/auth_repository.dart'
+    show AuthException, authRepositoryProvider;
 import '../../../shared/widgets/ui.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -16,13 +17,33 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  bool _obscure = true;
+  String _phone = '';
+  bool _loading = false;
+  String? _error;
 
-  void _signIn() {
-    final role = ref.read(authControllerProvider);
-    context.go(
-      role == UserRole.lender ? Routes.lenderHome : Routes.borrowerHome,
-    );
+  Future<void> _sendOtp() async {
+    final phone = _phone.replaceAll(RegExp(r'\D'), '');
+    if (!RegExp(r'^9\d{9}$').hasMatch(phone)) {
+      setState(() => _error = 'Enter a valid 10-digit number starting with 9');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final challenge =
+          await ref.read(authRepositoryProvider).requestOtp(phone);
+      if (!mounted) return;
+      context.push(
+        '${Routes.otp}?requestId=${Uri.encodeQueryComponent(challenge.requestId)}'
+        '&phone=${Uri.encodeQueryComponent(challenge.maskedPhone)}',
+      );
+    } on AuthException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -43,6 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       label: 'Mobile Number',
                       placeholder: '98XXXXXXXX',
                       keyboardType: TextInputType.phone,
+                      onChanged: (v) => setState(() => _phone = v),
                       prefix: const Text(
                         '🇳🇵 +977',
                         style: TextStyle(
@@ -54,36 +76,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    AppInput(
-                      label: 'PIN',
-                      placeholder: 'Enter 4-digit PIN',
-                      keyboardType: TextInputType.number,
-                      obscureText: _obscure,
-                      suffix: GestureDetector(
-                        onTap: () => setState(() => _obscure = !_obscure),
-                        child: Icon(
-                          _obscure
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                          size: 20,
-                          color: AppColors.secondary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        'Forgot PIN?',
-                        style: TextStyle(
-                          fontFamily: kInter,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.teal,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                    const _OtpHint(),
                     _orDivider(),
                     const SizedBox(height: 20),
                     _biometric(),
@@ -95,10 +88,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: Column(
                 children: [
+                  if (_error != null) ...[
+                    Text(
+                      _error!,
+                      style: const TextStyle(
+                        fontFamily: kInter,
+                        fontSize: 12,
+                        color: AppColors.danger,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   AppBtn(
                     fullWidth: true,
-                    onPressed: _signIn,
-                    child: const Text('Login'),
+                    disabled: _phone.length < 10 || _loading,
+                    onPressed: _sendOtp,
+                    child: _loading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Send OTP'),
                   ),
                   const SizedBox(height: 20),
                   GestureDetector(
@@ -243,7 +255,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: _signIn,
+        onTap: null, // Device biometrics arrive after the OTP session exists.
         child: const SizedBox(
           height: 56,
           child: Row(
@@ -263,6 +275,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _OtpHint extends StatelessWidget {
+  const _OtpHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Text(
+      'We\'ll text you a one-time code — no password or PIN needed.',
+      style: TextStyle(
+        fontFamily: kInter,
+        fontSize: 13,
+        color: AppColors.secondary,
+        height: 1.5,
       ),
     );
   }
