@@ -15,22 +15,22 @@ Lenders browse verified loan requests, fund them fully or in fractions, and earn
 | Money | Integer paisa + append-only double-entry ledger *(planned)* |
 | Payments | Behind a swappable provider interface; NepalLend never custodies lender funds *(regulated partner holds funds)* |
 
-## Repository layout (target)
+## Repository layout
 
 ```
 nepallend/
-├── apps/mobile/      # this Flutter app
-├── apps/api/         # Express + Prisma backend (planned)
-├── packages/api-spec # OpenAPI contract (planned)
-└── docs/             # scope, security baseline, decisions
+├── apps/mobile/       # this Flutter app ✓
+├── apps/api/          # Express + Prisma backend (planned, Stage 4)
+├── apps/admin/        # KYC/loan review console (planned)
+├── packages/api-spec/ # OpenAPI contract (planned, Stage 5)
+└── docs/              # scope, security baseline, decisions
 ```
-
-> The repo is currently a single Flutter project at the root; monorepo restructure is Stage 2 of the Foundations plan.
 
 ## Getting started
 
 ```bash
 # Requires Flutter 3.47+ (Dart 3.13+)
+cd apps/mobile
 flutter pub get
 flutter analyze        # 0 issues
 flutter test           # 24 tests
@@ -39,8 +39,8 @@ flutter run            # Android emulator or device
 
 ### Android release signing
 
-Release builds use debug keys until you create `android/key.properties`
-(see `android/key.properties.example`). The file and any `*.jks` keystore are gitignored.
+Release builds use debug keys until you create `apps/mobile/android/key.properties`
+(see `apps/mobile/android/key.properties.example`). The file and any `*.jks` keystore are gitignored.
 
 ### Build flavors
 
@@ -56,9 +56,9 @@ Full scope, risk engine, security plan and roadmap live in the project plan docu
 
 ## Conventions
 
-- Design system lives in `lib/widgets/ui.dart`; style guide runs at the `/style-guide` route
-- Amounts are formatted NPR with lakh grouping (`formatNPR` in `lib/widgets/ui.dart`)
-- Tests: per-screen render smoke tests in `test/screens_smoke_test.dart`
+- Design system lives in `apps/mobile/lib/widgets/ui.dart`; style guide runs at the `/style-guide` route
+- Amounts are formatted NPR with lakh grouping (`formatNPR` in `apps/mobile/lib/widgets/ui.dart`)
+- Tests: per-screen render smoke tests in `apps/mobile/test/screens_smoke_test.dart`
 
 ## License
 
