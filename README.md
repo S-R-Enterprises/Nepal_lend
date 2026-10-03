@@ -1,17 +1,65 @@
-# nepal_lend
+# NepalLend
 
-A new Flutter project.
+**Peer-to-peer lending marketplace for Nepal** — verified borrowers, fractional funding and explainable risk.
 
-## Getting Started
+Lenders browse verified loan requests, fund them fully or in fractions, and earn interest as borrowers repay. Borrowers apply for small loans, receive an explainable risk rating, and repay through the app. NepalLend never lends its own money: it connects people, checks who they are, scores the risk, records the agreement and keeps an exact ledger of who is owed what.
 
-This project is a starting point for a Flutter application.
+> ⚠️ **Status:** pre-alpha mobile client. All data on screen is hard-coded sample data; there is no backend yet. Not a lending offer.
 
-A few resources to get you started if this is your first Flutter project:
+## Stack
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+| Layer | Choice |
+|---|---|
+| Mobile app | Flutter (Dart), Android first |
+| Backend | Node.js + Express + TypeScript + Prisma on PostgreSQL *(planned — see project plan)* |
+| Money | Integer paisa + append-only double-entry ledger *(planned)* |
+| Payments | Behind a swappable provider interface; NepalLend never custodies lender funds *(regulated partner holds funds)* |
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Repository layout (target)
+
+```
+nepallend/
+├── apps/mobile/      # this Flutter app
+├── apps/api/         # Express + Prisma backend (planned)
+├── packages/api-spec # OpenAPI contract (planned)
+└── docs/             # scope, security baseline, decisions
+```
+
+> The repo is currently a single Flutter project at the root; monorepo restructure is Stage 2 of the Foundations plan.
+
+## Getting started
+
+```bash
+# Requires Flutter 3.47+ (Dart 3.13+)
+flutter pub get
+flutter analyze        # 0 issues
+flutter test           # 24 tests
+flutter run            # Android emulator or device
+```
+
+### Android release signing
+
+Release builds use debug keys until you create `android/key.properties`
+(see `android/key.properties.example`). The file and any `*.jks` keystore are gitignored.
+
+### Build flavors
+
+Planned for Foundations Stage 3 (`dev` / `staging` / `prod`). Not yet implemented.
+
+## Product scope (v1)
+
+- **Borrower:** phone OTP signup, KYC, income-based loan request, explainable risk rating, e-signed agreement, repayment schedule (eSewa / Khalti / ConnectIPS / bank)
+- **Lender:** wallet, browse risk-graded loans, fractional funding, portfolio and payouts
+- **Admin:** KYC review, flagged-request approval, overdue monitoring, audit log
+
+Full scope, risk engine, security plan and roadmap live in the project plan document (`docs/` once published).
+
+## Conventions
+
+- Design system lives in `lib/widgets/ui.dart`; style guide runs at the `/style-guide` route
+- Amounts are formatted NPR with lakh grouping (`formatNPR` in `lib/widgets/ui.dart`)
+- Tests: per-screen render smoke tests in `test/screens_smoke_test.dart`
+
+## License
+
+Private / unlicensed — all rights reserved (until the team decides otherwise).

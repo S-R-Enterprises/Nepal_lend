@@ -1,11 +1,11 @@
 {
-    "name": "nepal_lend",
-    "short_name": "nepal_lend",
+    "name": "NepalLend",
+    "short_name": "NepalLend",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "NepalLend — peer-to-peer lending marketplace for Nepal.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

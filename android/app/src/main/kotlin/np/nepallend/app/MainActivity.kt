@@ -1,4 +1,4 @@
-package com.example.nepal_lend
+package np.nepallend.app
 
 import io.flutter.embedding.android.FlutterActivity
 

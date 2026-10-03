@@ -1,0 +1,12 @@
+# Release signing configuration for NepalLend (Android).
+#
+# 1. Generate a keystore (once, keep it SAFE and backed up — losing it means
+#    you can never update the Play Store listing again):
+#      keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA \
+#        -keysize 2048 -validity 10000 -alias upload
+# 2. Copy this file to android/key.properties (gitignored) and fill in real
+#    values. The build falls back to debug signing while it is absent.
+storePassword=REPLACE_ME
+keyPassword=REPLACE_ME
+keyAlias=upload
+storeFile=../upload-keystore.jks
