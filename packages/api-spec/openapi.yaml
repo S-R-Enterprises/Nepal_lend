@@ -1,0 +1,775 @@
+openapi: 3.1.0
+info:
+  title: NepalLend API
+  version: 0.1.0
+  description: |
+    Contract for the NepalLend P2P lending backend.
+
+    Conventions:
+    - All monetary amounts are **integer paisa** (NPR × 100), field names end
+      in `Paisa`. Never send or return floats for money.
+    - Auth: `Authorization: Bearer <accessToken>` on everything except
+      `/health` and `/auth/*`.
+    - Errors: RFC 9457 problem shape `{ "error": "...", "message": "..." }`.
+    - Lists accept `limit` / `offset` query params and return plain arrays.
+    - Dates: RFC 3339 strings.
+
+servers:
+  - url: http://localhost:3000
+    description: Local Express server
+  - url: http://localhost:4001
+    description: Prism mock
+
+tags:
+  - name: system
+  - name: auth
+  - name: users
+  - name: loans
+  - name: lender
+  - name: wallet
+  - name: notifications
+
+paths:
+  /api/v1/health:
+    get:
+      tags: [system]
+      operationId: getHealth
+      summary: Liveness + database reachability
+      security: []
+      responses:
+        "200":
+          description: Service healthy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          description: Database unreachable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
+  /api/v1/auth/otp/request:
+    post:
+      tags: [auth]
+      operationId: requestOtp
+      summary: Send a login/registration OTP by SMS
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OtpRequest" }
+      responses:
+        "200":
+          description: OTP sent (in dev/mock the code is `123456`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OtpChallenge" }
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/otp/verify:
+    post:
+      tags: [auth]
+      operationId: verifyOtp
+      summary: Verify the OTP and get session tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OtpVerify" }
+      responses:
+        "200":
+          description: Session created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthSession" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Invalidate the presented refresh token
+      responses:
+        "204": { description: Logged out }
+
+  /api/v1/me:
+    get:
+      tags: [users]
+      operationId: getMe
+      summary: Current user profile
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    patch:
+      tags: [users]
+      operationId: updateMe
+      summary: Update profile fields
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserUpdate" }
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+
+  /api/v1/me/kyc:
+    get:
+      tags: [users]
+      operationId: getKycStatus
+      summary: KYC checklist state for the current user
+      responses:
+        "200":
+          description: KYC status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KycStatus" }
+
+  /api/v1/me/kyc/steps/{stepId}/verify:
+    post:
+      tags: [users]
+      operationId: verifyKycStep
+      summary: Submit one KYC step for verification (simulated in v1)
+      parameters:
+        - $ref: "#/components/parameters/StepId"
+      responses:
+        "200":
+          description: Updated KYC status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KycStatus" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/loans:
+    get:
+      tags: [loans]
+      operationId: listLoans
+      summary: Browse open loans (lender) or own loans (borrower with `mine=true`)
+      parameters:
+        - name: mine
+          in: query
+          schema: { type: boolean, default: false }
+        - name: risk
+          in: query
+          description: Risk-band filter
+          schema: { type: string, enum: [Low, Medium, High] }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [rate, amount, tenor, newest], default: rate }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Loan list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LoanSummary" }
+    post:
+      tags: [loans]
+      operationId: createLoan
+      summary: Borrower submits a loan request (enters risk review)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoanCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoanDetail" }
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /api/v1/loans/{loanId}:
+    get:
+      tags: [loans]
+      operationId: getLoan
+      summary: Full loan detail incl. risk assessment, schedule, agreement
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      responses:
+        "200":
+          description: Detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoanDetail" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/loans/{loanId}/funding:
+    post:
+      tags: [lender]
+      operationId: fundLoan
+      summary: Lender funds an open loan (full or fractional)
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FundingRequest" }
+      responses:
+        "201":
+          description: Stake created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FundingResult" }
+        "409":
+          description: Loan no longer fully fundable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/loans/{loanId}/agreement:
+    post:
+      tags: [loans]
+      operationId: acceptAgreement
+      summary: Borrower e-signs the loan agreement after funding
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accepted]
+              properties:
+                accepted: { type: boolean }
+      responses:
+        "200":
+          description: Agreement accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoanDetail" }
+        "409":
+          description: Loan not ready for agreement
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/loans/{loanId}/repayment-schedule:
+    get:
+      tags: [loans]
+      operationId: getRepaymentSchedule
+      summary: Instalment schedule
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      responses:
+        "200":
+          description: Instalments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Instalment" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/loans/{loanId}/repayments:
+    post:
+      tags: [loans]
+      operationId: createRepayment
+      summary: Borrower makes a repayment (simulated payment method in v1)
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RepaymentRequest" }
+      responses:
+        "201":
+          description: Payment recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RepaymentResult" }
+
+  /api/v1/portfolio:
+    get:
+      tags: [lender]
+      operationId: getPortfolio
+      summary: Lender's stakes (active + repaid)
+      responses:
+        "200":
+          description: Stakes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Stake" }
+
+  /api/v1/stakes/{stakeId}:
+    get:
+      tags: [lender]
+      operationId: getStake
+      summary: One stake with its payment history
+      parameters:
+        - $ref: "#/components/parameters/StakeId"
+      responses:
+        "200":
+          description: Stake detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StakeDetail" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/wallet:
+    get:
+      tags: [wallet]
+      operationId: getWallet
+      summary: Wallet balance and linked top-up methods
+      responses:
+        "200":
+          description: Wallet
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Wallet" }
+
+  /api/v1/wallet/transactions:
+    get:
+      tags: [wallet]
+      operationId: listTransactions
+      summary: Wallet transaction history
+      parameters:
+        - name: filter
+          in: query
+          schema: { type: string, enum: [all, credit, debit], default: all }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Transaction" }
+
+  /api/v1/wallet/transactions/{txnId}:
+    get:
+      tags: [wallet]
+      operationId: getTransaction
+      summary: Single transaction detail
+      parameters:
+        - $ref: "#/components/parameters/TxnId"
+      responses:
+        "200":
+          description: Transaction
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TransactionDetail" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/notifications:
+    get:
+      tags: [notifications]
+      operationId: listNotifications
+      summary: In-app notifications
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Notification" }
+
+  /api/v1/notifications/{notifId}/read:
+    post:
+      tags: [notifications]
+      operationId: markNotificationRead
+      summary: Mark one notification read
+      parameters:
+        - $ref: "#/components/parameters/NotifId"
+      responses:
+        "204": { description: Marked }
+
+  /api/v1/notifications/read-all:
+    post:
+      tags: [notifications]
+      operationId: markAllNotificationsRead
+      summary: Mark every notification read
+      responses:
+        "204": { description: Marked }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    LoanId:
+      name: loanId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    StakeId:
+      name: stakeId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    TxnId:
+      name: txnId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    NotifId:
+      name: notifId
+      in: path
+      required: true
+      schema: { type: integer }
+    StepId:
+      name: stepId
+      in: path
+      required: true
+      schema: { type: string, enum: [citizenship, selfie, details] }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+
+  responses:
+    Unauthorized:
+      description: Missing/invalid credentials
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: Rate limited
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unprocessable:
+      description: Validation failed
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string, examples: [validation_error] }
+        message: { type: string }
+
+    Health:
+      type: object
+      required: [status, db, env, time]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        db: { type: string, enum: [ok, error] }
+        env: { type: string }
+        time: { type: string, format: date-time }
+
+    OtpRequest:
+      type: object
+      required: [phone]
+      properties:
+        phone:
+          type: string
+          pattern: "^9[0-9]{9}$"
+          description: Nepali mobile number, 10 digits starting with 9
+          examples: ["9841234567"]
+
+    OtpChallenge:
+      type: object
+      required: [requestId, expiresInSeconds, phone]
+      properties:
+        requestId: { type: string, format: uuid }
+        phone: { type: string, description: Masked number for display }
+        maskedPhone: { type: string, examples: ["9841***567"] }
+        expiresInSeconds: { type: integer, examples: [120] }
+
+    OtpVerify:
+      type: object
+      required: [requestId, code]
+      properties:
+        requestId: { type: string, format: uuid }
+        code: { type: string, minLength: 4, maxLength: 6, examples: ["123456"] }
+
+    AuthSession:
+      type: object
+      required: [accessToken, refreshToken, user]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        expiresInSeconds: { type: integer, examples: [3600] }
+        isNewUser: { type: boolean }
+        user: { $ref: "#/components/schemas/User" }
+
+    User:
+      type: object
+      required: [id, phone, role, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        phone: { type: string, examples: ["9841234567"] }
+        name: { type: [string, "null"], examples: ["Aarav Sharma"] }
+        role: { type: string, enum: [borrower, lender] }
+        email: { type: [string, "null"], format: email }
+        avatarUrl: { type: [string, "null"], format: uri }
+        kycState: { $ref: "#/components/schemas/KycState" }
+        createdAt: { type: string, format: date-time }
+
+    UserUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        email: { type: [string, "null"], format: email }
+
+    KycState:
+      type: string
+      enum: [unstarted, in_review, verified, rejected]
+
+    KycStatus:
+      type: object
+      required: [state, steps]
+      properties:
+        state: { $ref: "#/components/schemas/KycState" }
+        steps:
+          type: array
+          items: { $ref: "#/components/schemas/KycStep" }
+
+    KycStep:
+      type: object
+      required: [id, label, status]
+      properties:
+        id: { type: string, enum: [citizenship, selfie, details] }
+        label: { type: string }
+        status: { type: string, enum: ["Not started", Pending, Approved, Rejected] }
+        updatedAt: { type: [string, "null"], format: date-time }
+
+    LoanCreate:
+      type: object
+      required: [purpose, amountPaisa, tenorMonths, monthlyIncomePaisa]
+      properties:
+        purpose:
+          type: string
+          enum: [Agriculture, Business, Education, Emergency, Other]
+        amountPaisa: { type: integer, format: int64, minimum: 100000, examples: [8000000] }
+        tenorMonths: { type: integer, minimum: 1, maximum: 36, examples: [12] }
+        monthlyIncomePaisa: { type: integer, format: int64, minimum: 0, examples: [4500000] }
+        collateral: { type: [string, "null"] }
+        description: { type: [string, "null"], maxLength: 1000 }
+
+    LoanSummary:
+      type: object
+      required: [id, purpose, amountPaisa, ratePercent, tenorMonths, riskBand, fundedPaisa, status]
+      properties:
+        id: { type: string, format: uuid, examples: ["8b0f2a6e-..."] }
+        purpose: { type: string, examples: [Agriculture] }
+        borrowerRef: { type: string, description: Opaque display ref, examples: ["#A-2041"] }
+        amountPaisa: { type: integer, format: int64, examples: [8000000] }
+        ratePercent: { type: number, description: Annual rate, examples: [18] }
+        tenorMonths: { type: integer, examples: [12] }
+        riskBand: { type: string, enum: [Low, Medium, High] }
+        riskGrade: { type: [string, "null"], examples: ["B+"] }
+        fundedPaisa: { type: integer, format: int64, examples: [5600000] }
+        status:
+          type: string
+          enum: [draft, reviewing, open, partially_funded, funded, active, repaid, defaulted]
+        createdAt: { type: string, format: date-time }
+
+    LoanDetail:
+      allOf:
+        - $ref: "#/components/schemas/LoanSummary"
+        - type: object
+          properties:
+            borrowerName: { type: [string, "null"] }
+            monthlyInstalmentPaisa: { type: integer, format: int64, examples: [746667] }
+            totalRepayablePaisa: { type: integer, format: int64, examples: [8960000] }
+            risk:
+              $ref: "#/components/schemas/RiskAssessment"
+            agreement:
+              $ref: "#/components/schemas/Agreement"
+            schedule:
+              type: array
+              items: { $ref: "#/components/schemas/Instalment" }
+
+    RiskAssessment:
+      type: object
+      required: [grade, band, score, factors]
+      properties:
+        grade: { type: string, examples: ["B+"] }
+        band: { type: string, enum: [Low, Medium, High] }
+        score: { type: integer, minimum: 0, maximum: 100, examples: [68] }
+        summary: { type: string }
+        factors:
+          type: array
+          items: { $ref: "#/components/schemas/RiskFactor" }
+
+    RiskFactor:
+      type: object
+      required: [name, impact, detail]
+      properties:
+        name: { type: string, examples: ["Income stability"] }
+        impact: { type: string, enum: [positive, neutral, negative] }
+        score: { type: integer, minimum: 0, maximum: 100 }
+        detail: { type: string }
+
+    Agreement:
+      type: object
+      required: [accepted, version]
+      properties:
+        accepted: { type: boolean }
+        acceptedAt: { type: [string, "null"], format: date-time }
+        version: { type: string, examples: ["2026-10-01"] }
+
+    Instalment:
+      type: object
+      required: [n, dueDate, principalPaisa, interestPaisa, totalPaisa, status]
+      properties:
+        n: { type: integer, description: Instalment number, examples: [1] }
+        dueDate: { type: string, format: date }
+        principalPaisa: { type: integer, format: int64 }
+        interestPaisa: { type: integer, format: int64 }
+        totalPaisa: { type: integer, format: int64 }
+        status: { type: string, enum: [upcoming, paid, late, partial] }
+
+    FundingRequest:
+      type: object
+      required: [amountPaisa]
+      properties:
+        amountPaisa: { type: integer, format: int64, minimum: 100000, examples: [500000] }
+
+    FundingResult:
+      type: object
+      required: [stakeId, loanId, amountPaisa]
+      properties:
+        stakeId: { type: string, format: uuid }
+        loanId: { type: string, format: uuid }
+        amountPaisa: { type: integer, format: int64 }
+        loanFundedPaisa: { type: integer, format: int64 }
+        loanFullyFunded: { type: boolean }
+
+    RepaymentRequest:
+      type: object
+      required: [amountPaisa, method]
+      properties:
+        amountPaisa: { type: integer, format: int64, minimum: 100000, examples: [746667] }
+        method: { type: string, enum: [esewa, khalti, connectips, bank] }
+
+    RepaymentResult:
+      type: object
+      required: [transactionId, amountPaisa, outstandingPaisa, schedule]
+      properties:
+        transactionId: { type: string, format: uuid }
+        amountPaisa: { type: integer, format: int64 }
+        outstandingPaisa: { type: integer, format: int64 }
+        schedule:
+          type: array
+          items: { $ref: "#/components/schemas/Instalment" }
+
+    Stake:
+      type: object
+      required: [id, loanId, purpose, borrowerRef, amountPaisa, outstandingPaisa, ratePercent, status, riskBand]
+      properties:
+        id: { type: string, format: uuid }
+        loanId: { type: string, format: uuid }
+        purpose: { type: string }
+        borrowerRef: { type: string }
+        amountPaisa: { type: integer, format: int64, examples: [5000000] }
+        outstandingPaisa: { type: integer, format: int64, examples: [4500000] }
+        interestReceivedPaisa: { type: integer, format: int64, examples: [1864000] }
+        ratePercent: { type: number }
+        tenorMonths: { type: integer }
+        riskBand: { type: string, enum: [Low, Medium, High] }
+        status: { type: string, enum: [active, repaid, defaulted] }
+
+    StakeDetail:
+      type: object
+      required: [stake, payments]
+      properties:
+        stake: { $ref: "#/components/schemas/Stake" }
+        payments:
+          type: array
+          items: { $ref: "#/components/schemas/StakePayment" }
+
+    StakePayment:
+      type: object
+      required: [month, principalPaisa, interestPaisa, totalPaisa, status]
+      properties:
+        month: { type: string, examples: ["2026-10"] }
+        principalPaisa: { type: integer, format: int64 }
+        interestPaisa: { type: integer, format: int64 }
+        totalPaisa: { type: integer, format: int64 }
+        status: { type: string, enum: [upcoming, paid, late, partial] }
+
+    Wallet:
+      type: object
+      required: [balancePaisa, methods]
+      properties:
+        balancePaisa: { type: integer, format: int64, examples: [12500000] }
+        methods:
+          type: array
+          description: Linked top-up / withdrawal methods
+          items:
+            type: object
+            required: [id, name, kind]
+            properties:
+              id: { type: string, examples: [esewa] }
+              name: { type: string, examples: [eSewa] }
+              kind: { type: string, enum: [wallet, bank, card] }
+              linked: { type: boolean }
+
+    Transaction:
+      type: object
+      required: [id, type, description, amountPaisa, method, createdAt]
+      description: Wallet ledger entry. `type` is credit/debit from the wallet's perspective.
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [credit, debit] }
+        description: { type: string, examples: ["Repayment from #A-2041"] }
+        amountPaisa: { type: integer, format: int64, examples: [284000] }
+        method: { type: string, enum: [eSewa, Khalti, ConnectIPS, Bank, Wallet, Portfolio] }
+        createdAt: { type: string, format: date-time }
+
+    TransactionDetail:
+      allOf:
+        - $ref: "#/components/schemas/Transaction"
+        - type: object
+          properties:
+            counterparty: { type: [string, "null"] }
+            referenceLoanId: { type: [string, "null"], format: uuid }
+            feesPaisa: { type: integer, format: int64 }
+
+    Notification:
+      type: object
+      required: [id, type, title, body, read, createdAt]
+      properties:
+        id: { type: integer, examples: [3] }
+        type:
+          type: string
+          enum: [loan_update, repayment, kyc, payout, system]
+        title: { type: string }
+        body: { type: string }
+        read: { type: boolean }
+        createdAt: { type: string, format: date-time }

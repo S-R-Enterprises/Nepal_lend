@@ -22,7 +22,7 @@ nepallend/
 ├── apps/mobile/       # this Flutter app ✓
 ├── apps/api/          # Express + Prisma backend ✓ (health scaffold; lending APIs pending OpenAPI, Stage 5)
 ├── apps/admin/        # KYC/loan review console (planned)
-├── packages/api-spec/ # OpenAPI contract (planned, Stage 5)
+├── packages/api-spec/ # OpenAPI 3.1 contract + Prism mock ✓ (npm run mock :4001)
 └── docs/              # scope, security baseline, decisions
 ```
 
