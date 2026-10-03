@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -66,7 +67,7 @@ class _KYCScreenState extends State<KYCScreen> {
       _kycSteps.where((s) => s.status == 'Approved').length;
 
   void _finish() {
-    Navigator.of(context).pushReplacementNamed(
+    context.go(
       Session.role == UserRole.lender ? Routes.lenderHome : Routes.borrowerHome,
     );
   }

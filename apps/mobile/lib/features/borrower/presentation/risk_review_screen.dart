@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -11,7 +12,7 @@ class RiskReviewScreen extends StatelessWidget {
   final bool underReview;
 
   void _accept(BuildContext context) =>
-      Navigator.pushNamed(context, Routes.loanAgreement);
+      context.push(Routes.loanAgreement);
 
   @override
   Widget build(BuildContext context) {

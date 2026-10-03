@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -22,7 +23,7 @@ class FundingSuccessScreen extends StatelessWidget {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          Navigator.pushReplacementNamed(context, Routes.lenderHome);
+          context.go(Routes.lenderHome);
         }
       },
       child: SystemChromeStyle(
@@ -79,7 +80,7 @@ class FundingSuccessScreen extends StatelessWidget {
                         AppBtn(
                           fullWidth: true,
                           onPressed: () =>
-                              Navigator.pushNamed(context, Routes.browseLoans),
+                              context.push(Routes.browseLoans),
                           child: const Text('Browse More Loans'),
                         ),
                         const SizedBox(height: 10),
@@ -87,7 +88,7 @@ class FundingSuccessScreen extends StatelessWidget {
                           fullWidth: true,
                           variant: AppBtnVariant.secondary,
                           onPressed: () =>
-                              Navigator.pushNamed(context, Routes.portfolio),
+                              context.push(Routes.portfolio),
                           child: const Text('View Portfolio'),
                         ),
                       ],

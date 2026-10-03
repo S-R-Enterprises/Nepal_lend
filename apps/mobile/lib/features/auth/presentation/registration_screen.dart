@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -82,13 +83,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     fullWidth: true,
                     disabled: _phone.length < 10,
                     onPressed: () =>
-                        Navigator.of(context).pushNamed(Routes.otp),
+                        context.push(Routes.otp),
                     child: const Text('Send OTP'),
                   ),
                   const SizedBox(height: 12),
                   GestureDetector(
                     onTap: () =>
-                        Navigator.of(context).pushNamed(Routes.login),
+                        context.push(Routes.login),
                     child: const Text.rich(
                       TextSpan(
                         text: 'Already registered? ',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -321,7 +322,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
   Widget _stakeCard(_Stake s) {
     return AppCard(
-      onTap: () => Navigator.pushNamed(context, Routes.loanStake),
+      onTap: () => context.push(Routes.loanStake),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -445,13 +446,13 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   void _onNavTap(BuildContext context, int index) {
     switch (index) {
       case 0:
-        Navigator.pushNamed(context, Routes.lenderHome);
+        context.push(Routes.lenderHome);
       case 1:
-        Navigator.pushNamed(context, Routes.browseLoans);
+        context.push(Routes.browseLoans);
       case 3:
-        Navigator.pushNamed(context, Routes.wallet);
+        context.push(Routes.wallet);
       case 4:
-        Navigator.pushNamed(context, Routes.profile);
+        context.push(Routes.profile);
     }
   }
 }

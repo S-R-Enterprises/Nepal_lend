@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -36,12 +37,9 @@ class _FundLoanSheetState extends State<FundLoanSheet> {
   }
 
   void _confirm() {
-    final nav = Navigator.of(context);
-    nav.pop();
-    nav.pushNamed(
-      Routes.fundingSuccess,
-      arguments: const {'partial': false},
-    );
+    final router = GoRouter.of(context);
+    router.pop();
+    router.push('${Routes.fundingSuccess}?partial=false');
   }
 
   @override

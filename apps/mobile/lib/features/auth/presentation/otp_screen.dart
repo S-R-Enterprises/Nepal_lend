@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -85,7 +86,7 @@ class _OTPScreenState extends State<OTPScreen> {
               child: AppBtn(
                 fullWidth: true,
                 disabled: _otp.length < 6,
-                onPressed: () => Navigator.of(context).pushNamed(Routes.kyc),
+                onPressed: () => context.push(Routes.kyc),
                 child: const Text('Verify'),
               ),
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -41,7 +42,7 @@ class _RepayScreenState extends State<RepayScreen> {
     _paid = widget.success;
   }
 
-  void _done() => Navigator.pushReplacementNamed(context, Routes.borrowerHome);
+  void _done() => context.go(Routes.borrowerHome);
 
   Color _dotColor(String status) => switch (status) {
         'paid' => AppColors.riskLow,

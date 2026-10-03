@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -22,7 +23,7 @@ class _BorrowerHomeScreenState extends State<BorrowerHomeScreen> {
 
   void _onNavTap(int index) {
     if (index == 3) {
-      Navigator.pushNamed(context, Routes.profile);
+      context.push(Routes.profile);
       return;
     }
     if (index != _tab) {
@@ -30,7 +31,7 @@ class _BorrowerHomeScreenState extends State<BorrowerHomeScreen> {
     }
   }
 
-  void _openRepay() => Navigator.pushNamed(context, Routes.repay);
+  void _openRepay() => context.push(Routes.repay);
 
   @override
   Widget build(BuildContext context) {
@@ -516,7 +517,7 @@ class _BorrowerHomeScreenState extends State<BorrowerHomeScreen> {
                   backgroundColor: AppColors.teal,
                   textColor: Colors.white,
                   onPressed: () =>
-                      Navigator.pushNamed(context, Routes.requestLoan),
+                      context.push(Routes.requestLoan),
                   child: const Text('Request a Loan →'),
                 ),
               ],

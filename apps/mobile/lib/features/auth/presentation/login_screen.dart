@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -16,7 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscure = true;
 
   void _signIn() {
-    Navigator.of(context).pushReplacementNamed(
+    context.go(
       Session.role == UserRole.lender ? Routes.lenderHome : Routes.borrowerHome,
     );
   }
@@ -99,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 20),
                   GestureDetector(
                     onTap: () =>
-                        Navigator.of(context).pushNamed(Routes.registration),
+                        context.push(Routes.registration),
                     child: const Text.rich(
                       TextSpan(
                         text: 'New to NepalLend? ',

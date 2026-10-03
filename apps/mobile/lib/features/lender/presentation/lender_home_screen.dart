@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -28,7 +29,7 @@ class _LenderHomeScreenState extends State<LenderHomeScreen> {
       Routes.profile,
     ];
     final target = targets[index];
-    if (target != null) Navigator.pushNamed(context, target);
+    if (target != null) context.push(target);
   }
 
   @override
@@ -114,7 +115,7 @@ class _LenderHomeScreenState extends State<LenderHomeScreen> {
 
   Widget _buildBell(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, Routes.notifications),
+      onTap: () => context.push(Routes.notifications),
       child: Container(
         width: 44,
         height: 44,
@@ -250,7 +251,7 @@ class _HomeContent extends StatelessWidget {
                 'Add Money',
                 AppColors.teal,
                 AppColors.mint,
-                () => Navigator.pushNamed(context, Routes.wallet),
+                () => context.push(Routes.wallet),
               ),
               const SizedBox(width: 10),
               _quickAction(
@@ -259,7 +260,7 @@ class _HomeContent extends StatelessWidget {
                 'Browse Loans',
                 AppColors.navy,
                 AppColors.surface,
-                () => Navigator.pushNamed(context, Routes.browseLoans),
+                () => context.push(Routes.browseLoans),
               ),
               const SizedBox(width: 10),
               _quickAction(
@@ -268,7 +269,7 @@ class _HomeContent extends StatelessWidget {
                 'Withdraw',
                 const Color(0xFF6366F1),
                 const Color(0xFFEEF2FF),
-                () => Navigator.pushNamed(context, Routes.wallet),
+                () => context.push(Routes.wallet),
               ),
               const SizedBox(width: 10),
               _quickAction(
@@ -277,7 +278,7 @@ class _HomeContent extends StatelessWidget {
                 'Portfolio',
                 AppColors.riskMed,
                 AppColors.riskMedBg,
-                () => Navigator.pushNamed(context, Routes.portfolio),
+                () => context.push(Routes.portfolio),
               ),
             ],
           ),
@@ -285,7 +286,7 @@ class _HomeContent extends StatelessWidget {
           SectionHeader(
             title: 'Upcoming Repayments',
             action: GestureDetector(
-              onTap: () => Navigator.pushNamed(context, Routes.portfolio),
+              onTap: () => context.push(Routes.portfolio),
               child: const Text(
                 'See all',
                 style: TextStyle(
@@ -305,7 +306,7 @@ class _HomeContent extends StatelessWidget {
           SectionHeader(
             title: 'Recommended for You',
             action: GestureDetector(
-              onTap: () => Navigator.pushNamed(context, Routes.browseLoans),
+              onTap: () => context.push(Routes.browseLoans),
               child: const Text(
                 'Browse all',
                 style: TextStyle(
@@ -325,7 +326,7 @@ class _HomeContent extends StatelessWidget {
             risk: 'Low',
             funded: 56000,
             total: 80000,
-            onTap: () => Navigator.pushNamed(context, Routes.loanDetails),
+            onTap: () => context.push(Routes.loanDetails),
           ),
           LoanCard(
             purpose: 'Education',
@@ -336,7 +337,7 @@ class _HomeContent extends StatelessWidget {
             risk: 'Low',
             funded: 22000,
             total: 50000,
-            onTap: () => Navigator.pushNamed(context, Routes.loanDetails),
+            onTap: () => context.push(Routes.loanDetails),
           ),
         ],
       ),

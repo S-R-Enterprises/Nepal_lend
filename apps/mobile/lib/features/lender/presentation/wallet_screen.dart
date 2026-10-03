@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -341,7 +342,7 @@ class _WalletScreenState extends State<WalletScreen> {
   Widget _txnRow(_Txn t) {
     final credit = t.type == 'credit';
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, Routes.transaction),
+      onTap: () => context.push(Routes.transaction),
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -409,13 +410,13 @@ class _WalletScreenState extends State<WalletScreen> {
   void _onNavTap(BuildContext context, int index) {
     switch (index) {
       case 0:
-        Navigator.pushNamed(context, Routes.lenderHome);
+        context.push(Routes.lenderHome);
       case 1:
-        Navigator.pushNamed(context, Routes.browseLoans);
+        context.push(Routes.browseLoans);
       case 2:
-        Navigator.pushNamed(context, Routes.portfolio);
+        context.push(Routes.portfolio);
       case 4:
-        Navigator.pushNamed(context, Routes.profile);
+        context.push(Routes.profile);
     }
   }
 }

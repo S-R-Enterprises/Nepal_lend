@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -62,7 +63,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool get _isEn => _lang == 'en';
 
   void _goToRoleSelection() {
-    Navigator.of(context).pushNamed(Routes.roleSelection);
+    context.push(Routes.roleSelection);
   }
 
   @override

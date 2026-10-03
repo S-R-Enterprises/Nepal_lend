@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -41,7 +42,7 @@ class _RequestLoanScreenState extends State<RequestLoanScreen> {
 
   int get _totalInterest => _emi * _tenor - _amount;
 
-  void _continue() => Navigator.pushNamed(context, Routes.riskReview);
+  void _continue() => context.push(Routes.riskReview);
 
   @override
   Widget build(BuildContext context) {

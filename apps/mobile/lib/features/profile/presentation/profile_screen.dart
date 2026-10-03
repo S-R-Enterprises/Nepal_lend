@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -177,11 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fullWidth: true,
             borderColor: AppColors.riskHigh,
             textColor: AppColors.riskHigh,
-            onPressed: () => Navigator.pushNamedAndRemoveUntil(
-              context,
-              Routes.login,
-              (route) => false,
-            ),
+            onPressed: () => context.go(Routes.login),
             child: Text(_t['logout']!),
           ),
           const SizedBox(height: 4),
@@ -321,7 +318,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               iconSize: 20,
               divider: i < _otherItems.length - 1,
               onTap: _otherItems[i].label == 'help'
-                  ? () => Navigator.pushNamed(context, Routes.help)
+                  ? () => context.push(Routes.help)
                   : () => _showSnack('${_otherItems[i].label} coming soon'),
             ),
         ],

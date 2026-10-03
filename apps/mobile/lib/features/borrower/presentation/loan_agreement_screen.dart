@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -28,7 +29,7 @@ class _LoanAgreementScreenState extends State<LoanAgreementScreen> {
 
   void _downloadPdf() {}
 
-  void _viewStatus() => Navigator.pushNamed(context, Routes.repay);
+  void _viewStatus() => context.push(Routes.repay);
 
   @override
   Widget build(BuildContext context) {

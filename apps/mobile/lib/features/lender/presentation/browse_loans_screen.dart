@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -94,16 +95,12 @@ class _BrowseLoansScreenState extends State<BrowseLoansScreen> {
   void _onNavTap(int index) {
     if (index == 1) return;
     if (index == 0) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        Routes.lenderHome,
-        (route) => false,
-      );
+      context.go(Routes.lenderHome);
       return;
     }
     const targets = <String?>[null, null, Routes.portfolio, Routes.wallet, Routes.profile];
     final target = targets[index];
-    if (target != null) Navigator.pushNamed(context, target);
+    if (target != null) context.push(target);
   }
 
   @override
@@ -248,7 +245,7 @@ class _BrowseLoansScreenState extends State<BrowseLoansScreen> {
               risk: l.risk,
               funded: l.funded,
               total: l.total,
-              onTap: () => Navigator.pushNamed(context, Routes.loanDetails),
+              onTap: () => context.push(Routes.loanDetails),
             ),
         ],
       ),

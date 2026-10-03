@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -56,7 +57,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     final id = _selected;
     if (id == null) return;
     Session.role = id == 'lender' ? UserRole.lender : UserRole.borrower;
-    Navigator.of(context).pushNamed(Routes.registration);
+    context.push(Routes.registration);
   }
 
   @override
@@ -93,7 +94,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   const SizedBox(height: 16),
                   GestureDetector(
                     onTap: () =>
-                        Navigator.of(context).pushNamed(Routes.login),
+                        context.push(Routes.login),
                     child: const Text.rich(
                       TextSpan(
                         text: 'Already have an account? ',
