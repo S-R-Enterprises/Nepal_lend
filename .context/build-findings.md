@@ -45,3 +45,33 @@ PATH: Flutter was not on user PATH; added `C:\Users\maske\OneDrive\Documents\flu
 - Desktop display names (`windows/`, `macos/`, `linux/` titles) still `nepal_lend` (desktop not in v1)
 - Release signing falls back to **debug keys** until a real keystore + `key.properties` exist
 - No flavors yet (Stage 3), no CI (Stage 6)
+
+---
+
+# Stage 3–4 — Environment & tooling findings
+
+Date: 2026-10-03
+
+- **Flutter `resValue` trap:** `productFlavors { resValue(...) }` fails with
+  *"custom resource values, but the feature is disabled"* (Flutter's Gradle
+  plugin disables AGP build feature `resvalues`). Fix: per-flavor source sets
+  (`src/<flavor>/res/values/strings.xml`) instead.
+- **Prisma npm tags:** `latest` = `8.0.0-rc.19` (pre-release). Stable line is
+  `7.10.0` (dist-tag `prev`). Use `prisma@^7.10.0` + `@prisma/client@^7.10.0`.
+- **Prisma 7 setup:** driver adapter mandatory (`@prisma/adapter-better-sqlite3`
+  for SQLite), `prisma-client` generator with `output`, `prisma7.config.ts`
+  holds the datasource URL (schema `datasource` block has no `url`), ESM only
+  (`"type": "module"`).
+- **TypeScript:** npm `latest` is 7.0.2 (native compiler); used for `tsc --noEmit`
+  gate. `res.json()` is typed `unknown` — cast in tests.
+- **npm audit (apps/api):** 4 highs are transitive Prisma CLI deps
+  (`deepmerge-ts` via `@prisma/config`, `mysql2` via `prisma`). Only offered
+  fix = downgrade to prisma@6. Deferred to Stage 6 security review.
+- **No Docker / no local Postgres** on this machine → Prisma uses SQLite for
+  dev (`apps/api/dev.db`, gitignored); Postgres swap documented in
+  `apps/api/README.md`.
+- **better-sqlite3@12.11.1** installed with prebuilt binary (VS C++ build
+  tools absent per flutter doctor — did not need to compile).
+- `npm install` in `apps/api` warns that install scripts (prisma, esbuild,
+  better-sqlite3) are "not yet covered by allowScripts" (npm 11.19 supply-chain
+  feature); scripts did run (client generated, native module loads).

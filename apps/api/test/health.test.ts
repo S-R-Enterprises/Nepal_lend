@@ -1,0 +1,53 @@
+import type { Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createApp } from "../src/app.js";
+import { createPrisma } from "../src/db.js";
+
+let server: Server;
+let baseUrl: string;
+const prisma = createPrisma();
+
+beforeAll(async () => {
+  const app = createApp(prisma);
+  await new Promise<void>((resolve) => {
+    server = app.listen(0, () => resolve());
+  });
+  baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+});
+
+afterAll(async () => {
+  await new Promise((resolve) => server.close(resolve));
+  await prisma.$disconnect();
+});
+
+describe("GET /", () => {
+  it("identifies the service", async () => {
+    const res = await fetch(`${baseUrl}/`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ service: "nepallend-api" });
+  });
+});
+
+describe("GET /api/v1/health", () => {
+  it("returns 200 with db ok", async () => {
+    const res = await fetch(`${baseUrl}/api/v1/health`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      status: string;
+      db: string;
+      time: string;
+    };
+    expect(body.status).toBe("ok");
+    expect(body.db).toBe("ok");
+    expect(typeof body.time).toBe("string");
+  });
+});
+
+describe("unknown route", () => {
+  it("returns json 404", async () => {
+    const res = await fetch(`${baseUrl}/api/v1/nope`);
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "not_found" });
+  });
+});
