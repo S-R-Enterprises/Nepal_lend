@@ -57,7 +57,7 @@ Release builds use debug keys until you create `apps/mobile/android/key.properti
 - **Lender:** wallet, browse risk-graded loans, fractional funding, portfolio and payouts
 - **Admin:** KYC review, flagged-request approval, overdue monitoring, audit log
 
-Full scope, risk engine, security plan and roadmap live in the project plan document (`docs/` once published).
+Full scope: [`docs/product-scope.md`](docs/product-scope.md) · decisions: [`docs/decisions.md`](docs/decisions.md) · security: [`docs/security-baseline.md`](docs/security-baseline.md)
 
 ## Conventions
 
