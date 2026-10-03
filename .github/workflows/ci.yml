@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "foundation/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  mobile:
+    name: Flutter (analyze + test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.5"
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  api:
+    name: API (typecheck + test + audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+      - run: npm ci
+        # postinstall runs `prisma generate`
+      - run: npm run prisma:deploy
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm audit --audit-level=high
+
+  spec:
+    name: OpenAPI + Prism mock
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/api-spec
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: packages/api-spec/package-lock.json
+      - run: npm ci
+      - name: Boot Prism and probe the contract
+        run: |
+          npx prism mock openapi.yaml --port 4100 > prism.log 2>&1 &
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:4100/api/v1/health && break
+            sleep 1
+          done
+          curl -sf http://localhost:4100/api/v1/health
+          curl -sf "http://localhost:4100/api/v1/loans?limit=1"
+          curl -sf http://localhost:4100/api/v1/wallet
+          cat prism.log
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Official Docker image: free for organizations (the gitleaks
+      # *action* needs a paid org license).
+      - name: gitleaks detect
+        run: >
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest
+          detect --source="/repo" --redact --no-banner

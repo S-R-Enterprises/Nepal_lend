@@ -43,8 +43,8 @@ It mirrors the mobile app's `--dart-define=ENV`.
 
 ## Known notes
 
-- `npm audit`: 4 highs are transitive in Prisma's own CLI deps
-  (`deepmerge-ts`, `mysql2` — MySQL unused); only "fix" is downgrading to
-  Prisma 6, tracked for Stage 6 review.
+- Audit is clean: npm `overrides` pin `deepmerge-ts@^8` and `mysql2@^3.24`
+  above Prisma's vulnerable transitive ranges (verified: generate/migrate/
+  typecheck/tests green under the overrides, `npm audit` = 0).
 - `prisma` is pinned to 7.x: the npm `latest` tag currently points at an
   8.0.0-rc pre-release.

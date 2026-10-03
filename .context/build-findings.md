@@ -64,9 +64,19 @@ Date: 2026-10-03
   (`"type": "module"`).
 - **TypeScript:** npm `latest` is 7.0.2 (native compiler); used for `tsc --noEmit`
   gate. `res.json()` is typed `unknown` — cast in tests.
-- **npm audit (apps/api):** 4 highs are transitive Prisma CLI deps
-  (`deepmerge-ts` via `@prisma/config`, `mysql2` via `prisma`). Only offered
-  fix = downgrade to prisma@6. Deferred to Stage 6 security review.
+- **npm audit (apps/api):** 4 highs were transitive Prisma CLI deps
+  (`deepmerge-ts@7` via `@prisma/config`, `mysql2@3.15` via `prisma`), reported
+  even with `--omit=dev`. **Resolved in Stage 6** with npm `overrides`
+  (`deepmerge-ts ^8.0.2`, `mysql2 ^3.24.5`): audit = 0; Prisma
+  generate/migrate/typecheck/tests re-verified green under the overrides.
+- **CI (Stage 6):** `.github/workflows/ci.yml` — jobs: flutter (3.47.5
+  analyze+test), api (npm ci + migrate deploy + typecheck + test + audit),
+  spec (Prism boot + HTTP probes), secrets. Owner is a GitHub
+  **Organization**, so the licensed `gitleaks/gitleaks-action` was avoided in
+  favour of the free `zricethezav/gitleaks:latest` Docker image
+  (`detect --source=/repo --redact`). Local pre-scan with gitleaks 8.30.1:
+  11 commits, no leaks. `gh` CLI not installed on this machine; owner type
+  checked via the public API.
 - **No Docker / no local Postgres** on this machine → Prisma uses SQLite for
   dev (`apps/api/dev.db`, gitignored); Postgres swap documented in
   `apps/api/README.md`.
