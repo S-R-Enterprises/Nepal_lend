@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/state/auth_controller.dart';
@@ -24,6 +27,7 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
     'citizenship': (icon: '🪪', sublabel: 'Citizenship / Passport'),
     'selfie': (icon: '🤳', sublabel: 'Live photo verification'),
     'details': (icon: '📝', sublabel: 'Personal details'),
+    'bank_statement': (icon: '🏦', sublabel: 'Bank statement · last 6 months'),
   };
 
   KycStatus? _status;
@@ -32,6 +36,7 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
   String? _error;
   String? _expanded;
   final TextEditingController _nameController = TextEditingController();
+  final Map<String, XFile> _captures = {};
 
   @override
   void initState() {
@@ -94,6 +99,7 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
         _status = status;
         _busy = false;
         _expanded = _firstPending(status) ?? stepId;
+        if (stepId != 'details') _captures.remove(stepId);
       });
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -211,7 +217,7 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
 
   Widget _header(BuildContext context) {
     final approved = _status?.approvedCount ?? 0;
-    final total = _status?.steps.length ?? 3;
+    final total = _status?.steps.length ?? 4;
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(color: AppColors.navy),
@@ -483,20 +489,52 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
       );
     }
 
-    final (description, actionLabel) = switch (step.id) {
-      'citizenship' => (
-          'Photograph the front of your citizenship card or passport.',
-          'Scan citizenship',
-        ),
-      'selfie' => (
-          'Take a clear, well-lit selfie — face the camera directly.',
-          'Take selfie',
-        ),
-      _ => (
-          'We need your full name as it appears on your citizenship.',
-          'Submit details',
-        ),
+    if (step.id == 'details') {
+      final ready = _nameController.text.trim().isNotEmpty;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'We need your full name as it appears on your citizenship.',
+            style: TextStyle(
+              fontFamily: kInter,
+              fontSize: 13,
+              color: AppColors.secondary,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          AppInput(
+            label: 'Full name',
+            placeholder: 'e.g. Aarav Sharma',
+            controller: _nameController,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 12),
+          _actionBtn(
+            'Submit details',
+            enabled: ready,
+            onTap: () => _completeStep('details'),
+          ),
+          const SizedBox(height: 8),
+          _devNote(),
+        ],
+      );
+    }
+
+    final description = switch (step.id) {
+      'citizenship' =>
+        'Photograph the front of your citizenship card or passport.',
+      'selfie' => 'Take a clear, well-lit selfie — face the camera directly.',
+      _ =>
+        'Upload a photo of your bank statement covering the last 6 months. All entries must be readable.',
     };
+    final captureLabel = switch (step.id) {
+      'citizenship' => 'Scan citizenship',
+      'selfie' => 'Take selfie',
+      _ => 'Upload bank statement',
+    };
+    final capture = _captures[step.id];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,42 +548,178 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
             height: 1.5,
           ),
         ),
-        if (step.id == 'details') ...[
+        const SizedBox(height: 12),
+        if (capture == null)
+          _actionBtn(
+            captureLabel,
+            enabled: true,
+            onTap: () => _pickDocument(step.id),
+          )
+        else ...[
+          _capturePreview(capture),
           const SizedBox(height: 12),
-          AppInput(
-            label: 'Full name',
-            placeholder: 'e.g. Aarav Sharma',
-            onChanged: (_) => setState(() {}),
+          _actionBtn(
+            'Submit for verification',
+            enabled: true,
+            onTap: () => _completeStep(step.id),
+          ),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: _busy ? null : () => _pickDocument(step.id),
+            child: const Text(
+              'Choose a different photo',
+              style: TextStyle(
+                fontFamily: kInter,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.teal,
+                decoration: TextDecoration.underline,
+                decorationColor: AppColors.teal,
+              ),
+            ),
           ),
         ],
-        const SizedBox(height: 12),
-        _actionBtn(actionLabel, step.id),
         const SizedBox(height: 8),
-        const Text(
-          'Dev note: verification is instant in this build (simulated review).',
-          style: TextStyle(
-            fontFamily: kInter,
-            fontSize: 11,
-            color: AppColors.secondary,
+        _devNote(),
+      ],
+    );
+  }
+
+  Future<void> _pickDocument(String stepId) async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 18, 20, 6),
+              child: Text(
+                'Add document photo',
+                style: TextStyle(
+                  fontFamily: kPoppins,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  color: AppColors.navy,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.photo_camera_outlined,
+                color: AppColors.teal,
+              ),
+              title: const Text(
+                'Take photo',
+                style: TextStyle(fontFamily: kInter, fontSize: 14),
+              ),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.photo_library_outlined,
+                color: AppColors.teal,
+              ),
+              title: const Text(
+                'Choose from gallery',
+                style: TextStyle(fontFamily: kInter, fontSize: 14),
+              ),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.close, color: AppColors.secondary),
+              title: const Text(
+                'Cancel',
+                style: TextStyle(fontFamily: kInter, fontSize: 14),
+              ),
+              onTap: () => Navigator.pop(sheetCtx),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1600,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+      setState(() {
+        _captures[stepId] = picked;
+        _error = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'Could not capture the image. Please try again.');
+    }
+  }
+
+  Widget _capturePreview(XFile file) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.file(
+            File(file.path),
+            width: 64,
+            height: 64,
+            fit: BoxFit.cover,
+          ),
+        ),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Text(
+            'Photo attached. Check it is sharp and all four corners are visible, then submit.',
+            style: TextStyle(
+              fontFamily: kInter,
+              fontSize: 13,
+              color: AppColors.secondary,
+              height: 1.45,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _actionBtn(String label, String stepId) {
-    final nameReady = stepId != 'details' || _nameController.text.trim().isNotEmpty;
+  Widget _devNote() {
+    return const Text(
+      'Dev note: photos stay on this device until document upload ships with '
+      'the admin console. Review is instant in this build.',
+      style: TextStyle(
+        fontFamily: kInter,
+        fontSize: 11,
+        color: AppColors.secondary,
+        height: 1.4,
+      ),
+    );
+  }
+
+  Widget _actionBtn(
+    String label, {
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    final live = enabled && !_busy;
     return Material(
-      color: nameReady ? AppColors.mint : AppColors.surface,
+      color: live ? AppColors.mint : AppColors.surface,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        onTap: (nameReady && !_busy) ? () => _completeStep(stepId) : null,
+        onTap: live ? onTap : null,
         child: Container(
           height: 40,
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _busy
+          child: _busy && enabled
               ? const SizedBox(
                   width: 16,
                   height: 16,
@@ -557,7 +731,7 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
                     fontFamily: kInter,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: nameReady ? AppColors.teal : AppColors.secondary,
+                    color: live ? AppColors.teal : AppColors.secondary,
                   ),
                 ),
         ),

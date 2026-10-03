@@ -170,7 +170,7 @@ describe("KYC", () => {
       steps: { id: string; status: string }[];
     };
     expect(initial.state).toBe("unstarted");
-    expect(initial.steps).toHaveLength(3);
+    expect(initial.steps).toHaveLength(4);
     expect(initial.steps.every((s) => s.status === "Not started")).toBe(true);
 
     const afterOne = (await (
@@ -185,8 +185,12 @@ describe("KYC", () => {
       method: "POST",
       headers: auth,
     });
+    await fetch(`${ts.baseUrl}/api/v1/me/kyc/steps/details/verify`, {
+      method: "POST",
+      headers: auth,
+    });
     const done = (await (
-      await fetch(`${ts.baseUrl}/api/v1/me/kyc/steps/details/verify`, {
+      await fetch(`${ts.baseUrl}/api/v1/me/kyc/steps/bank_statement/verify`, {
         method: "POST",
         headers: auth,
       })

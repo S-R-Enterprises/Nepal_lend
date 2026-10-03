@@ -465,7 +465,7 @@ components:
       name: stepId
       in: path
       required: true
-      schema: { type: string, enum: [citizenship, selfie, details] }
+      schema: { type: string, enum: [citizenship, selfie, details, bank_statement] }
     Limit:
       name: limit
       in: query
@@ -596,7 +596,7 @@ components:
       type: object
       required: [id, label, status]
       properties:
-        id: { type: string, enum: [citizenship, selfie, details] }
+        id: { type: string, enum: [citizenship, selfie, details, bank_statement] }
         label: { type: string }
         status: { type: string, enum: ["Not started", Pending, Approved, Rejected] }
         updatedAt: { type: [string, "null"], format: date-time }

@@ -24,13 +24,19 @@ export function toUser(user: User): PublicUser {
   };
 }
 
-export const KYC_STEP_IDS = ["citizenship", "selfie", "details"] as const;
+export const KYC_STEP_IDS = [
+  "citizenship",
+  "selfie",
+  "details",
+  "bank_statement",
+] as const;
 export type KycStepId = (typeof KYC_STEP_IDS)[number];
 
 const KYC_STEP_LABELS: Record<KycStepId, string> = {
   citizenship: "Citizenship document",
   selfie: "Selfie verification",
   details: "Personal details",
+  bank_statement: "Bank statement (6 months)",
 };
 
 export type KycStatus = {

@@ -160,3 +160,29 @@ Date: 2026-10-03
 - **Mock KYC state:** the in-process adapter keeps a per-run
   `Set<String>` of approved steps (unstarted → in_review → verified),
   mirroring the API's instant-approval simulation.
+
+---
+
+# KYC UX iteration — document capture + 4th step
+
+Date: 2026-10-03
+
+- **Disabled-submit bug:** `AppInput` for the name field got `onChanged` but
+  never `controller`, so `_nameController.text` stayed empty and the submit
+  gate never opened. Fix: wire `controller: _nameController`.
+- **Real capture:** `image_picker ^1.2.3` added (no Android manifest config
+  needed — camera/gallery via system intents, Photo Picker on Android 13+).
+  Citizenship/selfie/bank-statement steps now open a bottom sheet
+  (Take photo / Choose from gallery / Cancel), show a local thumbnail, and
+  only then allow "Submit for verification". Photos are **on-device only** —
+  the contract has no upload endpoint yet; storage belongs to the admin
+  review stage.
+- **4th KYC step `bank_statement`** ("Bank statement (6 months)"): added to
+  spec enums (parameter + schema — both had the same enum), API
+  `KYC_STEP_IDS`/labels, and mock adapter. `KycStep.step` is a Prisma
+  `String`, so **no migration needed**. Verified threshold follows
+  `KYC_STEP_IDS.length` automatically. Tests updated to 4 steps in both
+  stacks (mobile walk now ends on `bank_statement`).
+- **Loan gating note:** borrower loan requests must check
+  `user.kycState === 'verified'` (now requires all 4 steps) when the
+  lending endpoints are built.

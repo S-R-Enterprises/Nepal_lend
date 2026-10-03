@@ -27,14 +27,20 @@ void main() {
     }
   });
 
-  test('starts unstarted with the three contract steps', () async {
+  test('starts unstarted with the four contract steps', () async {
     final status = await repo.getStatus();
     expect(status.state, 'unstarted');
-    expect(status.steps.map((s) => s.id), ['citizenship', 'selfie', 'details']);
+    expect(status.steps.map((s) => s.id), [
+      'citizenship',
+      'selfie',
+      'details',
+      'bank_statement',
+    ]);
     expect(status.steps.map((s) => s.label), [
       'Citizenship document',
       'Selfie verification',
       'Personal details',
+      'Bank statement (6 months)',
     ]);
     expect(status.approvedCount, 0);
     expect(status.isVerified, isFalse);
@@ -47,9 +53,10 @@ void main() {
     expect(afterOne.approvedCount, 1);
 
     await repo.verifyStep('selfie');
-    final done = await repo.verifyStep('details');
+    await repo.verifyStep('details');
+    final done = await repo.verifyStep('bank_statement');
     expect(done.state, 'verified');
-    expect(done.approvedCount, 3);
+    expect(done.approvedCount, 4);
     expect(done.isVerified, isTrue);
   });
 

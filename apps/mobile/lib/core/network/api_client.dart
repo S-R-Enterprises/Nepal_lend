@@ -136,14 +136,20 @@ class _MockHttpClientAdapter implements HttpClientAdapter {
         options.method == 'POST') {
       final parts = path.split('/');
       final stepId = parts[parts.length - 2];
-      if (const ['citizenship', 'selfie', 'details'].contains(stepId)) {
+      const validSteps = [
+        'citizenship',
+        'selfie',
+        'details',
+        'bank_statement',
+      ];
+      if (validSteps.contains(stepId)) {
         _approvedKyc.add(stepId);
         payload = _kycStatus();
         status = 200;
       } else {
         payload = {
           'error': 'validation_error',
-          'message': 'stepId must be one of: citizenship, selfie, details',
+          'message': 'stepId must be one of: ${validSteps.join(', ')}',
         };
         status = 400;
       }
@@ -177,6 +183,7 @@ class _MockHttpClientAdapter implements HttpClientAdapter {
       ('citizenship', 'Citizenship document'),
       ('selfie', 'Selfie verification'),
       ('details', 'Personal details'),
+      ('bank_statement', 'Bank statement (6 months)'),
     ];
     return {
       'state': _approvedKyc.length >= steps.length
