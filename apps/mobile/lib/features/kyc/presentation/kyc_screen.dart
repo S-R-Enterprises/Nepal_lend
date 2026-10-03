@@ -1,59 +1,19 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../core/state/auth_controller.dart';
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../auth/data/auth_repository.dart' show authRepositoryProvider;
+import '../data/kyc_models.dart';
+import '../data/kyc_repository.dart';
 import '../../../shared/widgets/ui.dart';
-
-class _KycStep {
-  const _KycStep({
-    required this.id,
-    required this.icon,
-    required this.label,
-    required this.sublabel,
-    required this.status,
-  });
-
-  final String id;
-  final String icon;
-  final String label;
-  final String sublabel;
-  final String status;
-}
-
-const List<_KycStep> _kycSteps = [
-  _KycStep(
-    id: 'id',
-    icon: '🪪',
-    label: 'National ID',
-    sublabel: 'Citizenship / Passport',
-    status: 'Approved',
-  ),
-  _KycStep(
-    id: 'selfie',
-    icon: '🤳',
-    label: 'Selfie',
-    sublabel: 'Live photo verification',
-    status: 'In review',
-  ),
-  _KycStep(
-    id: 'address',
-    icon: '🏠',
-    label: 'Address',
-    sublabel: 'Permanent & temp address',
-    status: 'Not started',
-  ),
-  _KycStep(
-    id: 'bank',
-    icon: '🏦',
-    label: 'Bank / Wallet',
-    sublabel: 'eSewa, Khalti, Bank',
-    status: 'Not started',
-  ),
-];
 
 class KYCScreen extends ConsumerStatefulWidget {
   const KYCScreen({super.key});
@@ -63,10 +23,92 @@ class KYCScreen extends ConsumerStatefulWidget {
 }
 
 class _KYCScreenState extends ConsumerState<KYCScreen> {
-  String _expanded = 'selfie';
+  static const _meta = <String, ({String icon, String sublabel})>{
+    'citizenship': (icon: '🪪', sublabel: 'Citizenship / Passport'),
+    'selfie': (icon: '🤳', sublabel: 'Live photo verification'),
+    'details': (icon: '📝', sublabel: 'Personal details'),
+    'bank_statement': (icon: '🏦', sublabel: 'Bank statement · last 6 months'),
+  };
 
-  int get _approvedCount =>
-      _kycSteps.where((s) => s.status == 'Approved').length;
+  KycStatus? _status;
+  bool _loading = true;
+  bool _busy = false;
+  String? _error;
+  String? _expanded;
+  final TextEditingController _nameController = TextEditingController();
+  final Map<String, XFile> _captures = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final status = await ref.read(kycRepositoryProvider).getStatus();
+      if (!mounted) return;
+      setState(() {
+        _status = status;
+        _loading = false;
+        _expanded ??= _firstPending(status);
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    }
+  }
+
+  String? _firstPending(KycStatus status) {
+    for (final step in status.steps) {
+      if (!step.isApproved) return step.id;
+    }
+    return null;
+  }
+
+  Future<void> _completeStep(String stepId) async {
+    final name = _nameController.text.trim();
+    if (stepId == 'details' && name.isEmpty) {
+      setState(() => _error = 'Enter your full name to continue');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      if (stepId == 'details') {
+        await ref.read(authRepositoryProvider).updateProfile(name: name);
+      }
+      final status = await ref.read(kycRepositoryProvider).verifyStep(stepId);
+      if (!mounted) return;
+      setState(() {
+        _status = status;
+        _busy = false;
+        _expanded = _firstPending(status) ?? stepId;
+        if (stepId != 'details') _captures.remove(stepId);
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = e.message;
+      });
+    }
+  }
 
   void _finish() {
     final role = ref.read(authControllerProvider);
@@ -80,7 +122,9 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
       case 'Approved':
         return AppColors.riskLow;
       case 'In review':
+      case 'Pending':
         return AppColors.riskMed;
+      case 'Rejected':
       case 'Needs changes':
         return AppColors.riskHigh;
       default:
@@ -97,21 +141,7 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
         body: Column(
           children: [
             _header(context),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _infoBanner(),
-                    const SizedBox(height: 16),
-                    for (var i = 0; i < _kycSteps.length; i++)
-                      _stepRow(i, _kycSteps[i]),
-                    _nrbNotice(),
-                  ],
-                ),
-              ),
-            ),
+            Expanded(child: _body()),
             _bottomBar(),
           ],
         ),
@@ -119,7 +149,75 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
     );
   }
 
+  Widget _body() {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.teal),
+      );
+    }
+    final status = _status;
+    if (status == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _error ?? 'Could not load KYC status.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: kInter,
+                  fontSize: 14,
+                  color: AppColors.danger,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              AppBtn(
+                onPressed: _load,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (status.isVerified) ...[
+            _verifiedBanner(),
+            const SizedBox(height: 16),
+          ] else ...[
+            _infoBanner(),
+            const SizedBox(height: 16),
+          ],
+          if (_error != null) ...[
+            Text(
+              _error!,
+              style: const TextStyle(
+                fontFamily: kInter,
+                fontSize: 13,
+                color: AppColors.danger,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          for (var i = 0; i < status.steps.length; i++)
+            _stepRow(i, status.steps[i]),
+          _nrbNotice(),
+        ],
+      ),
+    );
+  }
+
   Widget _header(BuildContext context) {
+    final approved = _status?.approvedCount ?? 0;
+    final total = _status?.steps.length ?? 4;
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(color: AppColors.navy),
@@ -169,7 +267,7 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
                       ),
                     ),
                     Text(
-                      '$_approvedCount of ${_kycSteps.length} complete',
+                      '$approved of $total complete',
                       style: const TextStyle(
                         fontFamily: kInter,
                         fontSize: 12,
@@ -181,11 +279,39 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
                 ),
                 const SizedBox(height: 8),
                 ProgressBar(
-                  value: _approvedCount.toDouble(),
-                  max: _kycSteps.length.toDouble(),
+                  value: approved.toDouble(),
+                  max: total.toDouble(),
                   height: 6,
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _verifiedBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: const BoxDecoration(
+        color: AppColors.riskLowBg,
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('🎉', style: TextStyle(fontSize: 18, height: 1.3)),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Identity verified! Your account is fully verified — you can now request loans or fund them.',
+              style: TextStyle(
+                fontFamily: kInter,
+                fontSize: 13,
+                color: AppColors.riskLow,
+                height: 1.5,
+              ),
             ),
           ),
         ],
@@ -221,11 +347,12 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
     );
   }
 
-  Widget _stepRow(int index, _KycStep step) {
+  Widget _stepRow(int index, KycStep step) {
+    final meta = _meta[step.id];
     final isExpanded = _expanded == step.id;
-    final last = index == _kycSteps.length - 1;
+    final last = index == (_status?.steps.length ?? 0) - 1;
     final lineColor =
-        step.status == 'Approved' ? AppColors.riskLow : AppColors.border;
+        step.isApproved ? AppColors.riskLow : AppColors.border;
     return Stack(
       children: [
         _stepDot(index, step),
@@ -259,7 +386,8 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                     child: Row(
                       children: [
-                        Text(step.icon, style: const TextStyle(fontSize: 24)),
+                        Text(meta?.icon ?? '📄',
+                            style: const TextStyle(fontSize: 24)),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -275,7 +403,7 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
                                 ),
                               ),
                               Text(
-                                step.sublabel,
+                                meta?.sublabel ?? '',
                                 style: const TextStyle(
                                   fontFamily: kInter,
                                   fontSize: 12,
@@ -310,7 +438,7 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
     );
   }
 
-  Widget _stepDot(int index, _KycStep step) {
+  Widget _stepDot(int index, KycStep step) {
     return Container(
       width: 24,
       height: 24,
@@ -319,7 +447,7 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
         color: _dotColor(step.status),
         shape: BoxShape.circle,
       ),
-      child: step.status == 'Approved'
+      child: step.isApproved
           ? const Text(
               '✓',
               style: TextStyle(fontSize: 12, color: AppColors.white),
@@ -336,156 +464,276 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
     );
   }
 
-  Widget _stepDetails(_KycStep step) {
-    switch (step.status) {
-      case 'Approved':
-        return const Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _stepDetails(KycStep step) {
+    if (step.isApproved) {
+      final date = step.updatedAt != null && step.updatedAt!.length >= 10
+          ? ' on ${step.updatedAt!.substring(0, 10)}'
+          : '';
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('✅', style: TextStyle(fontSize: 13)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Approved$date. This step is complete.',
+              style: const TextStyle(
+                fontFamily: kInter,
+                fontSize: 13,
+                color: AppColors.riskLow,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (step.id == 'details') {
+      final ready = _nameController.text.trim().isNotEmpty;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'We need your full name as it appears on your citizenship.',
+            style: TextStyle(
+              fontFamily: kInter,
+              fontSize: 13,
+              color: AppColors.secondary,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          AppInput(
+            label: 'Full name',
+            placeholder: 'e.g. Aarav Sharma',
+            controller: _nameController,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 12),
+          _actionBtn(
+            'Submit details',
+            enabled: ready,
+            onTap: () => _completeStep('details'),
+          ),
+          const SizedBox(height: 8),
+          _devNote(),
+        ],
+      );
+    }
+
+    final description = switch (step.id) {
+      'citizenship' =>
+        'Photograph the front of your citizenship card or passport.',
+      'selfie' => 'Take a clear, well-lit selfie — face the camera directly.',
+      _ =>
+        'Upload a photo of your bank statement covering the last 6 months. All entries must be readable.',
+    };
+    final captureLabel = switch (step.id) {
+      'citizenship' => 'Scan citizenship',
+      'selfie' => 'Take selfie',
+      _ => 'Upload bank statement',
+    };
+    final capture = _captures[step.id];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          description,
+          style: const TextStyle(
+            fontFamily: kInter,
+            fontSize: 13,
+            color: AppColors.secondary,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (capture == null)
+          _actionBtn(
+            captureLabel,
+            enabled: true,
+            onTap: () => _pickDocument(step.id),
+          )
+        else ...[
+          _capturePreview(capture),
+          const SizedBox(height: 12),
+          _actionBtn(
+            'Submit for verification',
+            enabled: true,
+            onTap: () => _completeStep(step.id),
+          ),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: _busy ? null : () => _pickDocument(step.id),
+            child: const Text(
+              'Choose a different photo',
+              style: TextStyle(
+                fontFamily: kInter,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.teal,
+                decoration: TextDecoration.underline,
+                decorationColor: AppColors.teal,
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        _devNote(),
+      ],
+    );
+  }
+
+  Future<void> _pickDocument(String stepId) async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text('✅', style: TextStyle(fontSize: 13)),
-            SizedBox(width: 6),
-            Expanded(
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 18, 20, 6),
               child: Text(
-                'Verified on 14 Sep 2026. Expires Dec 2028.',
+                'Add document photo',
                 style: TextStyle(
-                  fontFamily: kInter,
-                  fontSize: 13,
-                  color: AppColors.riskLow,
-                  height: 1.5,
+                  fontFamily: kPoppins,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  color: AppColors.navy,
                 ),
               ),
             ),
+            ListTile(
+              leading: const Icon(
+                Icons.photo_camera_outlined,
+                color: AppColors.teal,
+              ),
+              title: const Text(
+                'Take photo',
+                style: TextStyle(fontFamily: kInter, fontSize: 14),
+              ),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.photo_library_outlined,
+                color: AppColors.teal,
+              ),
+              title: const Text(
+                'Choose from gallery',
+                style: TextStyle(fontFamily: kInter, fontSize: 14),
+              ),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.close, color: AppColors.secondary),
+              title: const Text(
+                'Cancel',
+                style: TextStyle(fontFamily: kInter, fontSize: 14),
+              ),
+              onTap: () => Navigator.pop(sheetCtx),
+            ),
+            const SizedBox(height: 8),
           ],
-        );
-      case 'In review':
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '⏳ Under review. Usually 1–2 business days.',
-              style: TextStyle(
-                fontFamily: kInter,
-                fontSize: 13,
-                color: AppColors.riskMed,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border, width: 1),
-                  ),
-                  child: const Text('🤳', style: TextStyle(fontSize: 28)),
-                ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Selfie uploaded on 28 Sep 2026.\nWe\'ll notify you once reviewed.',
-                    style: TextStyle(
-                      fontFamily: kInter,
-                      fontSize: 12,
-                      color: AppColors.secondary,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-      default:
-        if (step.id == 'address') {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Provide your permanent and current addresses with proof.',
-                style: TextStyle(
-                  fontFamily: kInter,
-                  fontSize: 13,
-                  color: AppColors.secondary,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Material(
-                color: AppColors.mint,
-                borderRadius: BorderRadius.circular(10),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: () {},
-                  child: Container(
-                    height: 40,
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: const Text(
-                      'Upload Address Proof',
-                      style: TextStyle(
-                        fontFamily: kInter,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.teal,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Link your eSewa, Khalti, or bank account for withdrawals.',
-              style: TextStyle(
-                fontFamily: kInter,
-                fontSize: 13,
-                color: AppColors.secondary,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _bankBtn('eSewa'),
-                const SizedBox(width: 8),
-                _bankBtn('Khalti'),
-                const SizedBox(width: 8),
-                _bankBtn('Bank'),
-              ],
-            ),
-          ],
-        );
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1600,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+      setState(() {
+        _captures[stepId] = picked;
+        _error = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'Could not capture the image. Please try again.');
     }
   }
 
-  Widget _bankBtn(String label) {
-    return Expanded(
-      child: Container(
-        height: 36,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border, width: 1.5),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontFamily: kInter,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.navy,
+  Widget _capturePreview(XFile file) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.file(
+            File(file.path),
+            width: 64,
+            height: 64,
+            fit: BoxFit.cover,
           ),
+        ),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Text(
+            'Photo attached. Check it is sharp and all four corners are visible, then submit.',
+            style: TextStyle(
+              fontFamily: kInter,
+              fontSize: 13,
+              color: AppColors.secondary,
+              height: 1.45,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _devNote() {
+    return const Text(
+      'Dev note: photos stay on this device until document upload ships with '
+      'the admin console. Review is instant in this build.',
+      style: TextStyle(
+        fontFamily: kInter,
+        fontSize: 11,
+        color: AppColors.secondary,
+        height: 1.4,
+      ),
+    );
+  }
+
+  Widget _actionBtn(
+    String label, {
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    final live = enabled && !_busy;
+    return Material(
+      color: live ? AppColors.mint : AppColors.surface,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: live ? onTap : null,
+        child: Container(
+          height: 40,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _busy && enabled
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: kInter,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: live ? AppColors.teal : AppColors.secondary,
+                  ),
+                ),
         ),
       ),
     );
@@ -530,7 +778,9 @@ class _KYCScreenState extends ConsumerState<KYCScreen> {
       child: AppBtn(
         fullWidth: true,
         onPressed: _finish,
-        child: const Text('Continue'),
+        child: Text(
+          (_status?.isVerified ?? false) ? 'Continue' : 'Continue anyway',
+        ),
       ),
     );
   }

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:nepal_lend/core/config/app_config.dart';
+import 'package:nepal_lend/core/network/api_client.dart';
+import 'package:nepal_lend/core/network/token_store.dart';
 import 'package:nepal_lend/features/borrower/presentation/borrower_home_screen.dart';
 import 'package:nepal_lend/features/borrower/presentation/loan_agreement_screen.dart';
 import 'package:nepal_lend/features/borrower/presentation/repay_screen.dart';
@@ -29,7 +32,12 @@ import 'package:nepal_lend/features/style_guide/presentation/style_guide_screen.
 import 'load_fonts.dart';
 
 void main() {
-  setUpAll(loadAppFonts);
+  setUpAll(() async {
+    await loadAppFonts();
+    // In-process mock keeps screens that auto-fetch off real sockets, and a
+    // seeded token lets them render the happy path instead of a 401.
+    await TokenStore().save(accessToken: 'mock-access-token', refreshToken: 'r');
+  });
 
   final screens = <String, Widget Function()>{
     'Onboarding': () => const OnboardingScreen(),
@@ -64,10 +72,17 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
+          overrides: [
+            apiClientProvider.overrideWithValue(ApiClient(env: AppEnv.mock)),
+          ],
           child: MaterialApp(home: Scaffold(body: entry.value())),
         ),
       );
-      await tester.pump();
+      // Drain async work: Dio schedules zero-duration timers, and screens
+      // that auto-fetch settle against the in-process mock adapter.
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+      }
       expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox());

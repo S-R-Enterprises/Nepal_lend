@@ -1,20 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../data/auth_repository.dart' show AuthException, authRepositoryProvider;
 import '../../../shared/widgets/ui.dart';
 
-class RegistrationScreen extends StatefulWidget {
+class RegistrationScreen extends ConsumerStatefulWidget {
   const RegistrationScreen({super.key});
 
   @override
-  State<RegistrationScreen> createState() => _RegistrationScreenState();
+  ConsumerState<RegistrationScreen> createState() => _RegistrationScreenState();
 }
 
-class _RegistrationScreenState extends State<RegistrationScreen> {
+class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   String _phone = '';
+  bool _loading = false;
+  String? _error;
+
+  Future<void> _sendOtp() async {
+    final phone = _phone.replaceAll(RegExp(r'\D'), '');
+    if (!RegExp(r'^9\d{9}$').hasMatch(phone)) {
+      setState(() => _error = 'Enter a valid 10-digit number starting with 9');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final challenge =
+          await ref.read(authRepositoryProvider).requestOtp(phone);
+      if (!mounted) return;
+      final dev = challenge.devCode;
+      context.push(
+        '${Routes.otp}?requestId=${Uri.encodeQueryComponent(challenge.requestId)}'
+        '&phone=${Uri.encodeQueryComponent(challenge.maskedPhone)}'
+        '${dev == null ? '' : '&devCode=${Uri.encodeQueryComponent(dev)}'}',
+      );
+    } on AuthException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,12 +110,29 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: Column(
                 children: [
+                  if (_error != null) ...[
+                    Text(
+                      _error!,
+                      style: const TextStyle(
+                        fontFamily: kInter,
+                        fontSize: 12,
+                        color: AppColors.danger,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   AppBtn(
                     fullWidth: true,
-                    disabled: _phone.length < 10,
-                    onPressed: () =>
-                        context.push(Routes.otp),
-                    child: const Text('Send OTP'),
+                    disabled: _phone.length < 10 || _loading,
+                    onPressed: _sendOtp,
+                    child: _loading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Send OTP'),
                   ),
                   const SizedBox(height: 12),
                   GestureDetector(

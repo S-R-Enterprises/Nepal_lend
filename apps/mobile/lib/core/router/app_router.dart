@@ -55,7 +55,11 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: Routes.otp,
       name: 'otp',
-      builder: (context, state) => const OTPScreen(),
+        builder: (context, state) => OTPScreen(
+          requestId: state.uri.queryParameters['requestId'] ?? '',
+          phone: state.uri.queryParameters['phone'] ?? '',
+          devCode: state.uri.queryParameters['devCode'] ?? '',
+        ),
     ),
     GoRoute(
       path: Routes.login,

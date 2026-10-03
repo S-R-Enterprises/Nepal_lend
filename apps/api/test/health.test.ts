@@ -1,29 +1,19 @@
-import type { Server } from "node:http";
-import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createApp } from "../src/app.js";
-import { createPrisma } from "../src/db.js";
+import { startTestServer, type TestServer } from "./testServer.js";
 
-let server: Server;
-let baseUrl: string;
-const prisma = createPrisma();
+let ts: TestServer;
 
 beforeAll(async () => {
-  const app = createApp(prisma);
-  await new Promise<void>((resolve) => {
-    server = app.listen(0, () => resolve());
-  });
-  baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  ts = await startTestServer();
 });
 
 afterAll(async () => {
-  await new Promise((resolve) => server.close(resolve));
-  await prisma.$disconnect();
+  await ts.close();
 });
 
 describe("GET /", () => {
   it("identifies the service", async () => {
-    const res = await fetch(`${baseUrl}/`);
+    const res = await fetch(`${ts.baseUrl}/`);
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ service: "nepallend-api" });
   });
@@ -31,7 +21,7 @@ describe("GET /", () => {
 
 describe("GET /api/v1/health", () => {
   it("returns 200 with db ok", async () => {
-    const res = await fetch(`${baseUrl}/api/v1/health`);
+    const res = await fetch(`${ts.baseUrl}/api/v1/health`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       status: string;
@@ -46,7 +36,7 @@ describe("GET /api/v1/health", () => {
 
 describe("unknown route", () => {
   it("returns json 404", async () => {
-    const res = await fetch(`${baseUrl}/api/v1/nope`);
+    const res = await fetch(`${ts.baseUrl}/api/v1/nope`);
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: "not_found" });
   });

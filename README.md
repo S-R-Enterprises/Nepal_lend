@@ -4,7 +4,7 @@
 
 Lenders browse verified loan requests, fund them fully or in fractions, and earn interest as borrowers repay. Borrowers apply for small loans, receive an explainable risk rating, and repay through the app. NepalLend never lends its own money: it connects people, checks who they are, scores the risk, records the agreement and keeps an exact ledger of who is owed what.
 
-> ⚠️ **Status:** pre-alpha. The mobile client renders hard-coded sample data; the API is a scaffold (health endpoint only, no lending endpoints yet). Not a lending offer.
+> ⚠️ **Status:** pre-alpha. Auth vertical slice is live (OTP + JWT `/auth/*` and `/me` on the API, wired end-to-end in the mobile app against the mock adapter); everything else renders hard-coded sample data and no lending endpoints exist yet. Not a lending offer.
 
 ## Stack
 
@@ -20,7 +20,7 @@ Lenders browse verified loan requests, fund them fully or in fractions, and earn
 ```
 nepallend/
 ├── apps/mobile/       # this Flutter app ✓
-├── apps/api/          # Express + Prisma backend ✓ (health scaffold; lending APIs pending OpenAPI, Stage 5)
+├── apps/api/          # Express + Prisma backend ✓ (auth + health live; lending APIs pending OpenAPI, Stage 5)
 ├── apps/admin/        # KYC/loan review console (planned)
 ├── packages/api-spec/ # OpenAPI 3.1 contract + Prism mock ✓ (npm run mock :4001)
 └── docs/              # scope, security baseline, decisions
@@ -33,12 +33,14 @@ nepallend/
 cd apps/mobile
 flutter pub get
 flutter analyze        # 0 issues
-flutter test           # 30 tests
+flutter test           # 41 tests
 flutter run --flavor dev --dart-define=ENV=dev   # Android emulator or device
 
 # Flavors (android/app/build.gradle.kts): dev -> .dev id, staging -> .staging,
 # prod -> np.nepallend.app. Pair each with the matching --dart-define=ENV.
 # ENV=mock serves canned API responses (no backend needed).
+# Dev OTP: the code is 123456 and is shown on the OTP screen in dev/mock
+# builds (real SMS kicks in once apps/api sets SMS_PROVIDER=http + SMS_API_URL).
 
 # API (Node 22+)
 cd apps/api

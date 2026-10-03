@@ -22,6 +22,11 @@ creates `apps/api/dev.db`.
 |---|---|
 | `GET /` | service name + env |
 | `GET /api/v1/health` | 200 `{status:"ok", db:"ok"}` / 503 if DB unreachable |
+| `POST /api/v1/auth/otp/request` | starts login/registration; SMS via `SMS_PROVIDER` (default `console` = log only); non-prod responses include `devCode` |
+| `POST /api/v1/auth/otp/verify` | exchanges the code for access/refresh JWTs |
+| `POST /api/v1/auth/logout` | revokes refresh tokens (bearer) |
+| `GET /api/v1/me`, `PATCH /api/v1/me` | profile (bearer) |
+| `GET /api/v1/me/kyc`, `POST /api/v1/me/kyc/steps/:id/verify` | KYC status walk-through |
 
 All lending endpoints arrive with the OpenAPI contract (Stage 5+); the mobile
 app runs against `ENV=mock` until then.
@@ -30,6 +35,18 @@ app runs against `ENV=mock` until then.
 
 `ENV=dev|staging|prod` is read by the server (`.env`) and reported in `/health`.
 It mirrors the mobile app's `--dart-define=ENV`.
+
+SMS delivery (OTP):
+
+| Var | Default | Notes |
+|---|---|---|
+| `SMS_PROVIDER` | `console` | `console` = print to log (never in prod); `http` = deliver |
+| `SMS_API_URL` | — | required when `SMS_PROVIDER=http`; POST `{to, from, text}` + `X-API_KEY` |
+| `SMS_API_KEY` | — | sent as the `X-API_KEY` header |
+| `SMS_SENDER_ID` | `NepalLend` | provider sender ID |
+
+In non-production the OTP is fixed to `123456` and echoed as `devCode` in the
+`/auth/otp/request` response, so dev builds show it on screen.
 
 ## Database
 

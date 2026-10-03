@@ -85,3 +85,104 @@ Date: 2026-10-03
 - `npm install` in `apps/api` warns that install scripts (prisma, esbuild,
   better-sqlite3) are "not yet covered by allowScripts" (npm 11.19 supply-chain
   feature); scripts did run (client generated, native module loads).
+
+---
+
+# Auth vertical slice — findings
+
+Date: 2026-10-03
+
+- **Prisma 7 migrations:** `prisma migrate dev` does NOT regenerate the client
+  (unlike v5/6) — run `npx prisma generate` manually after schema changes or
+  the new models are missing from `@prisma/client` types.
+- **KycStep composite key:** `@@id([userId, step])` needs an explicit
+  back-relation field on `User` or Prisma errors on import.
+- **Vitest + shared SQLite:** two test files opening `dev.db` concurrently can
+  hit `SQLITE_BUSY`; `fileParallelism: false` in `vitest.config.ts` keeps the
+  suite deterministic.
+- **Dio interceptor order:** `LogInterceptor` added *before* the auth wrapper
+  so dev logs don't print `Authorization` headers.
+- **Mock adapter (in-process):** Dio drops the `/api/v1` base-path segment in
+  `options.uri.path` for some requests → route with `endsWith('/auth/otp/…')`
+  not `== '/api/v1/…'`. 204 responses must return an empty body **without**
+  a JSON content-type or the transformer trips.
+- **Bearer guard in mock:** `/me` + `/auth/logout` return 401 without
+  `Authorization`, which is what proves the interceptor + `TokenStore` wiring
+  in `test/auth_flow_test.dart` (mock otherwise ignores the token).
+- **flutter_secure_storage in tests:** platform channel missing → static
+  in-memory fallback in `TokenStore` (shared across instances, cleared in
+  `setUp` to stop cross-test leakage).
+- **Null-aware elements (Dart 3.13):** `{'name': ?name}` replaces
+  `if (name != null) 'name': name` — the `use_null_aware_elements` lint is on
+  by default and gates the analyze=0 CI job.
+- **JWT:** `jose` (ESM, no deps) instead of `jsonwebtoken`; `AUTH_SECRET`
+  defaults to a dev-only value in `src/config.ts` — production must set it.
+
+---
+
+# OTP delivery — findings
+
+Date: 2026-10-03
+
+- **No SMS was ever sent** (user-reported): `requestOtp` only logged the code.
+  Added `SmsSender` (`src/services/sms.ts`): `console` (default) or `http`
+  (POST `{to, from, text}` + `X-API_KEY`, provider chosen via `SMS_API_URL`).
+  `SMS_PROVIDER=http` without `SMS_API_URL` throws; prod + `console` logs a
+  loud one-time error (and never prints codes to prod logs).
+- **`devCode` contract:** non-prod `/auth/otp/request` echoes the generated
+  code (spec `OtpChallenge.devCode`) → the OTP screen shows a "tap to fill"
+  dev hint, so registration is completable without SMS. Guarded by
+  `config.isProd` on the server; the screen renders whatever it receives.
+- **Send failures are 502:** `sms_failed` deletes the challenge (no
+  undelivered guessable code) and maps to `502 {error:"sms_failed"}` — added
+  to the spec as a response on `otp/request`.
+- **DI for tests:** `setSmsSenderForTests()` lets `test/sms.test.ts` inject
+  recording/broken senders; module state stays per-file (vitest isolation +
+  `fileParallelism: false`).
+
+---
+
+# KYC vertical slice — findings
+
+Date: 2026-10-03
+
+- **Spec drift fixed:** `GET /me/kyc` was missing `401`; `POST verify` listed
+  `404` but the API validates the `stepId` enum with `400` — spec now documents
+  `400` + `401` (matches `test/auth.test.ts`).
+- **Smoke-test pending timers:** `testWidgets` runs in FakeAsync — bare
+  `tester.pump()` does **not** fire Dio's zero-duration scheduling timer, so
+  the KYC screen's auto-fetch left a pending timer. Fix: pump with a small
+  elapsed duration (6 × 10 ms) to drain, and override `apiClientProvider`
+  with an `AppEnv.mock` client so no test ever opens a real socket.
+- **Shared `ApiException`:** the auth slice's `AuthException` moved to
+  `core/network/api_exception.dart` (with `fromDio`) and is re-exported as a
+  typedef, so KYC and future features share one error type without churn.
+- **Mock KYC state:** the in-process adapter keeps a per-run
+  `Set<String>` of approved steps (unstarted → in_review → verified),
+  mirroring the API's instant-approval simulation.
+
+---
+
+# KYC UX iteration — document capture + 4th step
+
+Date: 2026-10-03
+
+- **Disabled-submit bug:** `AppInput` for the name field got `onChanged` but
+  never `controller`, so `_nameController.text` stayed empty and the submit
+  gate never opened. Fix: wire `controller: _nameController`.
+- **Real capture:** `image_picker ^1.2.3` added (no Android manifest config
+  needed — camera/gallery via system intents, Photo Picker on Android 13+).
+  Citizenship/selfie/bank-statement steps now open a bottom sheet
+  (Take photo / Choose from gallery / Cancel), show a local thumbnail, and
+  only then allow "Submit for verification". Photos are **on-device only** —
+  the contract has no upload endpoint yet; storage belongs to the admin
+  review stage.
+- **4th KYC step `bank_statement`** ("Bank statement (6 months)"): added to
+  spec enums (parameter + schema — both had the same enum), API
+  `KYC_STEP_IDS`/labels, and mock adapter. `KycStep.step` is a Prisma
+  `String`, so **no migration needed**. Verified threshold follows
+  `KYC_STEP_IDS.length` automatically. Tests updated to 4 steps in both
+  stacks (mobile walk now ends on `bank_statement`).
+- **Loan gating note:** borrower loan requests must check
+  `user.kycState === 'verified'` (now requires all 4 steps) when the
+  lending endpoints are built.

@@ -7,5 +7,7 @@ export default defineConfig({
       ENV: "test",
     },
     include: ["test/**/*.test.ts"],
+    // Test files share one SQLite file — run them serially to avoid lock fights.
+    fileParallelism: false,
   },
 });
