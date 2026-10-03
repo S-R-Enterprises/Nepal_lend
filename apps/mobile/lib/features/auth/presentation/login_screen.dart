@@ -1,24 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/state/auth_controller.dart';
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/ui.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscure = true;
 
   void _signIn() {
+    final role = ref.read(authControllerProvider);
     context.go(
-      Session.role == UserRole.lender ? Routes.lenderHome : Routes.borrowerHome,
+      role == UserRole.lender ? Routes.lenderHome : Routes.borrowerHome,
     );
   }
 

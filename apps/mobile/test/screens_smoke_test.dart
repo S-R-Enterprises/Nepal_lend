@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:nepal_lend/features/borrower/presentation/borrower_home_screen.dart';
@@ -62,7 +63,9 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: entry.value())),
+        ProviderScope(
+          child: MaterialApp(home: Scaffold(body: entry.value())),
+        ),
       );
       await tester.pump();
       expect(tester.takeException(), isNull);

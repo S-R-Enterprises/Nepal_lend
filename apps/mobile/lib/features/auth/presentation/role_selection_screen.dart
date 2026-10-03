@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/state/auth_controller.dart';
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -43,20 +45,23 @@ const List<_RoleOption> _roles = [
   ),
 ];
 
-class RoleSelectionScreen extends StatefulWidget {
+class RoleSelectionScreen extends ConsumerStatefulWidget {
   const RoleSelectionScreen({super.key});
 
   @override
-  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
+  ConsumerState<RoleSelectionScreen> createState() =>
+      _RoleSelectionScreenState();
 }
 
-class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
+class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
   String? _selected;
 
   void _continue() {
     final id = _selected;
     if (id == null) return;
-    Session.role = id == 'lender' ? UserRole.lender : UserRole.borrower;
+    ref.read(authControllerProvider.notifier).setRole(
+          id == 'lender' ? UserRole.lender : UserRole.borrower,
+        );
     context.push(Routes.registration);
   }
 
@@ -187,11 +192,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   Widget _roleCard(_RoleOption role) {
     final active = _selected == role.id;
     return GestureDetector(
-      onTap: () => setState(() {
-        _selected = role.id;
-        Session.role =
-            role.id == 'lender' ? UserRole.lender : UserRole.borrower;
-      }),
+      onTap: () {
+        setState(() => _selected = role.id);
+        ref.read(authControllerProvider.notifier).setRole(
+              role.id == 'lender' ? UserRole.lender : UserRole.borrower,
+            );
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(20),

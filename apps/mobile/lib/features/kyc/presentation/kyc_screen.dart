@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/state/auth_controller.dart';
 import '../../../routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -53,22 +55,23 @@ const List<_KycStep> _kycSteps = [
   ),
 ];
 
-class KYCScreen extends StatefulWidget {
+class KYCScreen extends ConsumerStatefulWidget {
   const KYCScreen({super.key});
 
   @override
-  State<KYCScreen> createState() => _KYCScreenState();
+  ConsumerState<KYCScreen> createState() => _KYCScreenState();
 }
 
-class _KYCScreenState extends State<KYCScreen> {
+class _KYCScreenState extends ConsumerState<KYCScreen> {
   String _expanded = 'selfie';
 
   int get _approvedCount =>
       _kycSteps.where((s) => s.status == 'Approved').length;
 
   void _finish() {
+    final role = ref.read(authControllerProvider);
     context.go(
-      Session.role == UserRole.lender ? Routes.lenderHome : Routes.borrowerHome,
+      role == UserRole.lender ? Routes.lenderHome : Routes.borrowerHome,
     );
   }
 
