@@ -39,6 +39,29 @@ android {
         versionName = flutter.versionName
     }
 
+    // One flavor per environment. Always run/build with an explicit flavor:
+    //   flutter run --flavor dev      --dart-define=ENV=dev
+    //   flutter run --flavor staging  --dart-define=ENV=staging
+    //   flutter run --flavor prod     --dart-define=ENV=prod
+    // (ENV selects the API base URL in lib/core/config/app_config.dart.)
+    // dev/staging get applicationId suffixes so all three can be installed
+    // side-by-side on one device; prod keeps np.nepallend.app for Play.
+    // App labels come from each flavor's src/<flavor>/res/values/strings.xml.
+    flavorDimensions += listOf("env")
+    productFlavors {
+        create("dev") {
+            dimension = "env"
+            applicationIdSuffix = ".dev"
+        }
+        create("staging") {
+            dimension = "env"
+            applicationIdSuffix = ".staging"
+        }
+        create("prod") {
+            dimension = "env"
+        }
+    }
+
     signingConfigs {
         if (keystorePropertiesFile.exists()) {
             create("release") {

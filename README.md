@@ -33,8 +33,12 @@ nepallend/
 cd apps/mobile
 flutter pub get
 flutter analyze        # 0 issues
-flutter test           # 24 tests
-flutter run            # Android emulator or device
+flutter test           # 30 tests
+flutter run --flavor dev --dart-define=ENV=dev   # Android emulator or device
+
+# Flavors (android/app/build.gradle.kts): dev -> .dev id, staging -> .staging,
+# prod -> np.nepallend.app. Pair each with the matching --dart-define=ENV.
+# ENV=mock serves canned API responses (no backend needed).
 ```
 
 ### Android release signing
