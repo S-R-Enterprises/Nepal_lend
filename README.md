@@ -33,7 +33,7 @@ nepallend/
 cd apps/mobile
 flutter pub get
 flutter analyze        # 0 issues
-flutter test           # 37 tests
+flutter test           # 41 tests
 flutter run --flavor dev --dart-define=ENV=dev   # Android emulator or device
 
 # Flavors (android/app/build.gradle.kts): dev -> .dev id, staging -> .staging,

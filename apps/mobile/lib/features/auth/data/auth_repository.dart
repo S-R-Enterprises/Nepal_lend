@@ -2,19 +2,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/network/token_store.dart';
 import 'auth_models.dart';
 
-/// Backend-communicable auth failure with the server's message.
-class AuthException implements Exception {
-  AuthException(this.message, {this.statusCode});
+export '../../../core/network/api_exception.dart' show ApiException;
 
-  final String message;
-  final int? statusCode;
-
-  @override
-  String toString() => message;
-}
+/// Historical name for [ApiException] — kept so existing imports keep working.
+typedef AuthException = ApiException;
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(ref.watch(apiClientProvider), TokenStore()),
@@ -87,17 +82,5 @@ class AuthRepository {
     }
   }
 
-  AuthException _map(DioException e) {
-    final data = e.response?.data;
-    if (data is Map && data['message'] is String) {
-      return AuthException(
-        data['message'] as String,
-        statusCode: e.response?.statusCode,
-      );
-    }
-    if (e.response == null) {
-      return AuthException('Cannot reach the server. Check your connection.');
-    }
-    return AuthException('Something went wrong.', statusCode: e.response?.statusCode);
-  }
+  AuthException _map(DioException e) => ApiException.fromDio(e);
 }

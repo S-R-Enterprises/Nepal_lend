@@ -55,6 +55,9 @@ class ApiClient {
 /// Canned responses for `ENV=mock` so the app runs fully offline. Shapes
 /// follow `packages/api-spec/openapi.yaml` (D10: the spec is the truth).
 class _MockHttpClientAdapter implements HttpClientAdapter {
+  /// Approved KYC steps for the current app run (stateful like the API).
+  final Set<String> _approvedKyc = {};
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -125,6 +128,25 @@ class _MockHttpClientAdapter implements HttpClientAdapter {
         if (body['role'] != null) 'role': body['role'],
       };
       status = 200;
+    } else if (path.endsWith('/me/kyc') && options.method == 'GET') {
+      payload = _kycStatus();
+      status = 200;
+    } else if (path.contains('/me/kyc/steps/') &&
+        path.endsWith('/verify') &&
+        options.method == 'POST') {
+      final parts = path.split('/');
+      final stepId = parts[parts.length - 2];
+      if (const ['citizenship', 'selfie', 'details'].contains(stepId)) {
+        _approvedKyc.add(stepId);
+        payload = _kycStatus();
+        status = 200;
+      } else {
+        payload = {
+          'error': 'validation_error',
+          'message': 'stepId must be one of: citizenship, selfie, details',
+        };
+        status = 400;
+      }
     } else {
       payload = {
         'error': 'not_implemented',
@@ -146,7 +168,33 @@ class _MockHttpClientAdapter implements HttpClientAdapter {
   }
 
   bool _requiresAuth(String path) =>
-      path.endsWith('/me') || path.endsWith('/auth/logout');
+      path.endsWith('/me') ||
+      path.contains('/me/kyc') ||
+      path.endsWith('/auth/logout');
+
+  Map<String, dynamic> _kycStatus() {
+    const steps = [
+      ('citizenship', 'Citizenship document'),
+      ('selfie', 'Selfie verification'),
+      ('details', 'Personal details'),
+    ];
+    return {
+      'state': _approvedKyc.length >= steps.length
+          ? 'verified'
+          : _approvedKyc.isEmpty
+              ? 'unstarted'
+              : 'in_review',
+      'steps': [
+        for (final (id, label) in steps)
+          {
+            'id': id,
+            'label': label,
+            'status': _approvedKyc.contains(id) ? 'Approved' : 'Not started',
+            'updatedAt': _approvedKyc.contains(id) ? _now() : null,
+          },
+      ],
+    };
+  }
 
   bool _hasBearer(RequestOptions options) {
     final h = options.headers['Authorization'];

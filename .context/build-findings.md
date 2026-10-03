@@ -139,3 +139,24 @@ Date: 2026-10-03
 - **DI for tests:** `setSmsSenderForTests()` lets `test/sms.test.ts` inject
   recording/broken senders; module state stays per-file (vitest isolation +
   `fileParallelism: false`).
+
+---
+
+# KYC vertical slice — findings
+
+Date: 2026-10-03
+
+- **Spec drift fixed:** `GET /me/kyc` was missing `401`; `POST verify` listed
+  `404` but the API validates the `stepId` enum with `400` — spec now documents
+  `400` + `401` (matches `test/auth.test.ts`).
+- **Smoke-test pending timers:** `testWidgets` runs in FakeAsync — bare
+  `tester.pump()` does **not** fire Dio's zero-duration scheduling timer, so
+  the KYC screen's auto-fetch left a pending timer. Fix: pump with a small
+  elapsed duration (6 × 10 ms) to drain, and override `apiClientProvider`
+  with an `AppEnv.mock` client so no test ever opens a real socket.
+- **Shared `ApiException`:** the auth slice's `AuthException` moved to
+  `core/network/api_exception.dart` (with `fromDio`) and is re-exported as a
+  typedef, so KYC and future features share one error type without churn.
+- **Mock KYC state:** the in-process adapter keeps a per-run
+  `Set<String>` of approved steps (unstarted → in_review → verified),
+  mirroring the API's instant-approval simulation.
