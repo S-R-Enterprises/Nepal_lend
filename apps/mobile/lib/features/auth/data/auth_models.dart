@@ -3,16 +3,22 @@ class OtpChallenge {
     required this.requestId,
     required this.maskedPhone,
     required this.expiresInSeconds,
+    this.devCode,
   });
 
   final String requestId;
   final String maskedPhone;
   final int expiresInSeconds;
 
+  /// Non-production only (server echoes it when ENV != prod) so dev builds
+  /// can show the code on screen. Always null in production.
+  final String? devCode;
+
   factory OtpChallenge.fromJson(Map<String, dynamic> json) => OtpChallenge(
         requestId: json['requestId'] as String,
         maskedPhone: (json['maskedPhone'] ?? json['phone']) as String,
         expiresInSeconds: (json['expiresInSeconds'] as num?)?.toInt() ?? 120,
+        devCode: json['devCode'] as String?,
       );
 }
 

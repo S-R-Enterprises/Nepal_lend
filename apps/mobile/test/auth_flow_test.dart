@@ -20,6 +20,7 @@ void main() {
     expect(challenge.requestId, 'mock-otp-9841234567');
     expect(challenge.maskedPhone, '9841***567');
     expect(challenge.expiresInSeconds, 120);
+    expect(challenge.devCode, '123456'); // non-production echo
   });
 
   test('me() without a token is rejected by the bearer guard', () async {

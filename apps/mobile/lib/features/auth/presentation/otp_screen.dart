@@ -22,12 +22,17 @@ class OTPScreen extends ConsumerStatefulWidget {
     super.key,
     this.requestId = '',
     this.phone = '',
+    this.devCode = '',
   });
 
   /// From the `/auth/otp/request` step; empty when the screen is opened
   /// without a live challenge (e.g. render smoke tests).
   final String requestId;
   final String phone;
+
+  /// Non-production echo of the generated code (dev builds show it on
+  /// screen since no real SMS is delivered). Empty in production.
+  final String devCode;
 
   @override
   ConsumerState<OTPScreen> createState() => _OTPScreenState();
@@ -38,6 +43,12 @@ class _OTPScreenState extends ConsumerState<OTPScreen> {
   int _timer = 30;
   bool _loading = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.devCode.length == 6) _otp = widget.devCode;
+  }
 
   Future<void> _verify() async {
     if (widget.requestId.isEmpty) {
@@ -122,6 +133,33 @@ class _OTPScreenState extends ConsumerState<OTPScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
+                    if (widget.devCode.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      GestureDetector(
+                        onTap: () => setState(() => _otp = widget.devCode),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.mint,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Dev build — no SMS is sent. Tap to fill: '
+                            '${widget.devCode}',
+                            style: const TextStyle(
+                              fontFamily: kInter,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.navy,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 28),
                     OTPInput(value: _otp),
                     const SizedBox(height: 28),

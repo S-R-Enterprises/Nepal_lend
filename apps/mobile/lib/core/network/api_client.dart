@@ -88,6 +88,7 @@ class _MockHttpClientAdapter implements HttpClientAdapter {
         'phone': '9841***567',
         'maskedPhone': '9841***567',
         'expiresInSeconds': 120,
+        'devCode': '123456',
       };
       status = 200;
     } else if (path.endsWith('/auth/otp/verify') && options.method == 'POST') {

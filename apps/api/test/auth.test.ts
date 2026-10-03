@@ -42,10 +42,13 @@ describe("POST /auth/otp/request", () => {
       requestId: string;
       maskedPhone: string;
       expiresInSeconds: number;
+      devCode?: string;
     };
     expect(body.requestId).toBeTruthy();
     expect(body.maskedPhone).toMatch(/^\d{4}\*{3}\d{3}$/);
     expect(body.expiresInSeconds).toBe(120);
+    // non-production echo so dev builds can show the code on screen
+    expect(body.devCode).toBe("123456");
   });
 
   it("rate-limits the 4th request for one number", async () => {

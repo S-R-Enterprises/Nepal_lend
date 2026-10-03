@@ -117,3 +117,25 @@ Date: 2026-10-03
   by default and gates the analyze=0 CI job.
 - **JWT:** `jose` (ESM, no deps) instead of `jsonwebtoken`; `AUTH_SECRET`
   defaults to a dev-only value in `src/config.ts` — production must set it.
+
+---
+
+# OTP delivery — findings
+
+Date: 2026-10-03
+
+- **No SMS was ever sent** (user-reported): `requestOtp` only logged the code.
+  Added `SmsSender` (`src/services/sms.ts`): `console` (default) or `http`
+  (POST `{to, from, text}` + `X-API_KEY`, provider chosen via `SMS_API_URL`).
+  `SMS_PROVIDER=http` without `SMS_API_URL` throws; prod + `console` logs a
+  loud one-time error (and never prints codes to prod logs).
+- **`devCode` contract:** non-prod `/auth/otp/request` echoes the generated
+  code (spec `OtpChallenge.devCode`) → the OTP screen shows a "tap to fill"
+  dev hint, so registration is completable without SMS. Guarded by
+  `config.isProd` on the server; the screen renders whatever it receives.
+- **Send failures are 502:** `sms_failed` deletes the challenge (no
+  undelivered guessable code) and maps to `502 {error:"sms_failed"}` — added
+  to the spec as a response on `otp/request`.
+- **DI for tests:** `setSmsSenderForTests()` lets `test/sms.test.ts` inject
+  recording/broken senders; module state stays per-file (vitest isolation +
+  `fileParallelism: false`).

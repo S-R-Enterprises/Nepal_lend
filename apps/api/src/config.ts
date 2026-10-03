@@ -6,4 +6,8 @@ export const config = {
   otpMaxRequestsPerWindow: 3,
   otpWindowMs: 10 * 60 * 1000,
   isProd: (process.env["ENV"] ?? "dev") === "prod",
+  smsProvider: process.env["SMS_PROVIDER"] ?? "console", // console | http
+  smsApiUrl: process.env["SMS_API_URL"],
+  smsApiKey: process.env["SMS_API_KEY"],
+  smsSenderId: process.env["SMS_SENDER_ID"] ?? "NepalLend",
 } as const;

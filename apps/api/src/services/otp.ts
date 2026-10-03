@@ -1,5 +1,6 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { config } from "../config.js";
+import { createSmsSender } from "./sms.js";
 
 type Challenge = { phone: string; code: string; expiresAt: number };
 
@@ -23,10 +24,10 @@ export function maskPhone(phone: string): string {
 }
 
 export type RequestOtpResult =
-  | { ok: true; requestId: string; expiresInSeconds: number }
-  | { ok: false; reason: "rate_limited" };
+  | { ok: true; requestId: string; expiresInSeconds: number; devCode?: string }
+  | { ok: false; reason: "rate_limited" | "sms_failed" };
 
-export function requestOtp(phone: string): RequestOtpResult {
+export async function requestOtp(phone: string): Promise<RequestOtpResult> {
   prune();
   const now = Date.now();
   const times = requestLog.get(phone) ?? [];
@@ -43,10 +44,28 @@ export function requestOtp(phone: string): RequestOtpResult {
     code,
     expiresAt: now + config.otpTtlSeconds * 1000,
   });
-  if (!config.isProd) {
-    console.log(`[otp] ${maskPhone(phone)} code=${code} (SMS not wired, dev only)`);
+
+  const minutes = Math.round(config.otpTtlSeconds / 60);
+  try {
+    await createSmsSender().send({
+      to: phone,
+      text: `Your NepalLend verification code is ${code}. It expires in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+    });
+  } catch (err) {
+    challenges.delete(requestId); // nothing was delivered — don't leave a guessable challenge
+    console.error(`[otp] SMS send failed for ${maskPhone(phone)}: ${(err as Error).message}`);
+    return { ok: false, reason: "sms_failed" };
   }
-  return { ok: true, requestId, expiresInSeconds: config.otpTtlSeconds };
+
+  if (!config.isProd) {
+    console.log(`[otp] ${maskPhone(phone)} code=${code}`);
+  }
+  return {
+    ok: true,
+    requestId,
+    expiresInSeconds: config.otpTtlSeconds,
+    ...(config.isProd ? {} : { devCode: code }),
+  };
 }
 
 export function verifyOtp(requestId: string, code: string): string | null {

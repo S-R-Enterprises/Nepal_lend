@@ -39,6 +39,8 @@ flutter run --flavor dev --dart-define=ENV=dev   # Android emulator or device
 # Flavors (android/app/build.gradle.kts): dev -> .dev id, staging -> .staging,
 # prod -> np.nepallend.app. Pair each with the matching --dart-define=ENV.
 # ENV=mock serves canned API responses (no backend needed).
+# Dev OTP: the code is 123456 and is shown on the OTP screen in dev/mock
+# builds (real SMS kicks in once apps/api sets SMS_PROVIDER=http + SMS_API_URL).
 
 # API (Node 22+)
 cd apps/api

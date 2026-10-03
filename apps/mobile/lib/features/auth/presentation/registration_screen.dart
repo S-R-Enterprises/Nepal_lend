@@ -34,9 +34,11 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       final challenge =
           await ref.read(authRepositoryProvider).requestOtp(phone);
       if (!mounted) return;
+      final dev = challenge.devCode;
       context.push(
         '${Routes.otp}?requestId=${Uri.encodeQueryComponent(challenge.requestId)}'
-        '&phone=${Uri.encodeQueryComponent(challenge.maskedPhone)}',
+        '&phone=${Uri.encodeQueryComponent(challenge.maskedPhone)}'
+        '${dev == null ? '' : '&devCode=${Uri.encodeQueryComponent(dev)}'}',
       );
     } on AuthException catch (e) {
       if (mounted) setState(() => _error = e.message);

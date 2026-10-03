@@ -58,6 +58,7 @@ final GoRouter appRouter = GoRouter(
         builder: (context, state) => OTPScreen(
           requestId: state.uri.queryParameters['requestId'] ?? '',
           phone: state.uri.queryParameters['phone'] ?? '',
+          devCode: state.uri.queryParameters['devCode'] ?? '',
         ),
     ),
     GoRoute(

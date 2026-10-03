@@ -61,7 +61,9 @@ paths:
             schema: { $ref: "#/components/schemas/OtpRequest" }
       responses:
         "200":
-          description: OTP sent (in dev/mock the code is `123456`)
+          description: >
+            OTP sent (in dev/mock the code is `123456`; non-production
+            responses include `devCode` so dev builds can display it)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/OtpChallenge" }
@@ -69,6 +71,11 @@ paths:
           $ref: "#/components/responses/Unprocessable"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+        "502":
+          description: SMS delivery failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/v1/auth/otp/verify:
     post:
@@ -520,6 +527,12 @@ components:
         phone: { type: string, description: Masked number for display }
         maskedPhone: { type: string, examples: ["9841***567"] }
         expiresInSeconds: { type: integer, examples: [120] }
+        devCode:
+          type: string
+          description: >
+            Non-production only. The code just generated, echoed back so dev
+            builds can show it on screen. Never present when ENV=prod.
+          examples: ["123456"]
 
     OtpVerify:
       type: object

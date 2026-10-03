@@ -20,11 +20,18 @@ export function authRouter(prisma: PrismaClient): Router {
       });
       return;
     }
-    const result = requestOtp(phone);
+    const result = await requestOtp(phone);
     if (!result.ok) {
-      res.status(429).json({
-        error: "rate_limited",
-        message: "Too many OTP requests for this number, try again later",
+      if (result.reason === "rate_limited") {
+        res.status(429).json({
+          error: "rate_limited",
+          message: "Too many OTP requests for this number, try again later",
+        });
+        return;
+      }
+      res.status(502).json({
+        error: "sms_failed",
+        message: "Could not send the SMS. Try again later.",
       });
       return;
     }
@@ -34,6 +41,7 @@ export function authRouter(prisma: PrismaClient): Router {
       phone: masked,
       maskedPhone: masked,
       expiresInSeconds: result.expiresInSeconds,
+      ...(result.devCode ? { devCode: result.devCode } : {}),
     });
   });
 
