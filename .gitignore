@@ -13,6 +13,11 @@ node_modules/
 **/.dart_tool/
 **/.flutter-plugins-dependencies
 dist/
+apps/api/generated/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
 
 # Generated/lock noise
 # (keep package lockfiles tracked: pubspec.lock, bun.lock, package-lock.json)

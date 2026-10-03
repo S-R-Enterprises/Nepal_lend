@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:nepal_lend/main.dart';
-import 'package:nepal_lend/screens/onboarding/onboarding_screen.dart';
+import 'package:nepal_lend/features/auth/presentation/onboarding_screen.dart';
 
 import 'load_fonts.dart';
 
@@ -10,7 +11,7 @@ void main() {
   setUpAll(loadAppFonts);
 
   testWidgets('splash shows brand then routes to onboarding', (tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const ProviderScope(child: MyApp()));
 
     expect(find.text('NepalLend'), findsOneWidget);
     expect(find.text('NL'), findsOneWidget);

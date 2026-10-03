@@ -6,6 +6,6 @@ scope, stack and conventions.
 ```bash
 flutter pub get
 flutter analyze   # 0 issues
-flutter test      # 24 tests
-flutter run
+flutter test      # 30 tests
+flutter run --flavor dev --dart-define=ENV=dev
 ```

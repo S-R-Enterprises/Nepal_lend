@@ -1,11 +1,5 @@
 enum UserRole { borrower, lender }
 
-class Session {
-  Session._();
-
-  static UserRole role = UserRole.borrower;
-}
-
 class Routes {
   Routes._();
 
@@ -36,7 +30,4 @@ class Routes {
   static const String notifications = '/notifications';
   static const String profile = '/profile';
   static const String help = '/help';
-
-  static String get home =>
-      Session.role == UserRole.lender ? lenderHome : borrowerHome;
 }

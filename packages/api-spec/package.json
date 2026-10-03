@@ -1,0 +1,12 @@
+{
+  "name": "@nepallend/api-spec",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenAPI 3.1 contract for the NepalLend API + Prism mock server",
+  "scripts": {
+    "mock": "prism mock openapi.yaml --port 4001"
+  },
+  "devDependencies": {
+    "@stoplight/prism-cli": "^5.13.1"
+  }
+}
