@@ -1,22 +1,11 @@
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Release signing is loaded from android/key.properties when present
-// (see key.properties.example). Until then, release builds fall back to
-// debug keys so `flutter run --release` still works locally.
-val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(keystorePropertiesFile.inputStream())
-}
-
 android {
-    namespace = "np.nepallend.app"
+    namespace = "com.example.nepal_lend"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -26,7 +15,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "np.nepallend.app"
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId = "com.example.nepal_lend"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -39,47 +29,11 @@ android {
         versionName = flutter.versionName
     }
 
-    // One flavor per environment. Always run/build with an explicit flavor:
-    //   flutter run --flavor dev      --dart-define=ENV=dev
-    //   flutter run --flavor staging  --dart-define=ENV=staging
-    //   flutter run --flavor prod     --dart-define=ENV=prod
-    // (ENV selects the API base URL in lib/core/config/app_config.dart.)
-    // dev/staging get applicationId suffixes so all three can be installed
-    // side-by-side on one device; prod keeps np.nepallend.app for Play.
-    // App labels come from each flavor's src/<flavor>/res/values/strings.xml.
-    flavorDimensions += listOf("env")
-    productFlavors {
-        create("dev") {
-            dimension = "env"
-            applicationIdSuffix = ".dev"
-        }
-        create("staging") {
-            dimension = "env"
-            applicationIdSuffix = ".staging"
-        }
-        create("prod") {
-            dimension = "env"
-        }
-    }
-
-    signingConfigs {
-        if (keystorePropertiesFile.exists()) {
-            create("release") {
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-                storePassword = keystoreProperties["storePassword"] as String
-            }
-        }
-    }
-
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }

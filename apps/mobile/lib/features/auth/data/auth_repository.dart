@@ -1,86 +1,44 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nepal_lend/core/network/api_client.dart';
+import 'package:nepal_lend/data/models/app_user.dart';
+import 'package:nepal_lend/features/auth/data/mock_auth_repository.dart';
 
-import '../../../core/network/api_client.dart';
-import '../../../core/network/api_exception.dart';
-import '../../../core/network/token_store.dart';
-import 'auth_models.dart';
+class CodeRequestResult {
+  const CodeRequestResult({required this.phone, this.demoCode});
 
-export '../../../core/network/api_exception.dart' show ApiException;
-
-/// Historical name for [ApiException] — kept so existing imports keep working.
-typedef AuthException = ApiException;
-
-final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => AuthRepository(ref.watch(apiClientProvider), TokenStore()),
-);
-
-class AuthRepository {
-  AuthRepository(this._api, this.tokens);
-
-  final ApiClient _api;
-  final TokenStore tokens;
-
-  Future<OtpChallenge> requestOtp(String phone) async {
-    final data = await _post('/auth/otp/request', {'phone': phone});
-    return OtpChallenge.fromJson(data);
-  }
-
-  Future<AuthSession> verifyOtp(String requestId, String code) async {
-    final data = await _post('/auth/otp/verify', {
-      'requestId': requestId,
-      'code': code,
-    });
-    final session = AuthSession.fromJson(data);
-    await tokens.save(
-      accessToken: session.accessToken,
-      refreshToken: session.refreshToken,
-    );
-    return session;
-  }
-
-  Future<ApiUser> me() async {
-    try {
-      final res = await _api.dio.get('/me');
-      return ApiUser.fromJson(res.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw _map(e);
-    }
-  }
-
-  Future<ApiUser> updateProfile({String? name, String? role}) async {
-    try {
-      final res = await _api.dio.patch('/me', data: {
-        'name': ?name,
-        'role': ?role,
-      });
-      return ApiUser.fromJson(res.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw _map(e);
-    }
-  }
-
-  Future<void> logout() async {
-    try {
-      await _api.dio.post('/auth/logout');
-    } on DioException catch (e) {
-      throw _map(e);
-    } finally {
-      await tokens.clear();
-    }
-  }
-
-  Future<Map<String, dynamic>> _post(
-    String path,
-    Map<String, dynamic> body,
-  ) async {
-    try {
-      final res = await _api.dio.post(path, data: body);
-      return res.data as Map<String, dynamic>;
-    } on DioException catch (e) {
-      throw _map(e);
-    }
-  }
-
-  AuthException _map(DioException e) => ApiException.fromDio(e);
+  final String phone;
+  final String? demoCode;
 }
+
+class AuthSession {
+  const AuthSession({required this.user, required this.token});
+
+  final AppUser user;
+  final String token;
+}
+
+/// Boundary between the app and the identity provider.
+///
+/// Track B adds `FirebaseAuthRepository` behind the same interface; screens
+/// and the controller do not change.
+abstract class AuthRepository {
+  Future<CodeRequestResult> sendCode(String phone);
+
+  Future<AuthSession> verifyCode({
+    required String phone,
+    required String code,
+  });
+
+  Future<AppUser?> restoreSession();
+
+  /// Re-reads the current user after a profile change such as KYC approval.
+  Future<AppUser?> currentUser();
+
+  Future<void> saveDeviceToken(String token);
+
+  Future<void> signOut();
+}
+
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  return MockAuthRepository(api: ref.watch(apiClientProvider));
+});

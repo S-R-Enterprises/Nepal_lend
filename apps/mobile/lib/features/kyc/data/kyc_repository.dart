@@ -1,34 +1,32 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nepal_lend/core/network/api_client.dart';
+import 'package:nepal_lend/data/models/enums.dart';
+import 'package:nepal_lend/data/models/kyc.dart';
+import 'package:nepal_lend/features/kyc/data/document_picker.dart';
+import 'package:nepal_lend/features/kyc/data/mock_kyc_repository.dart';
 
-import '../../../core/network/api_client.dart';
-import '../../../core/network/api_exception.dart';
-import 'kyc_models.dart';
+/// Boundary between the KYC UI and verification storage. Track B adds an HTTP
+/// implementation that uploads to a signed URL; screens stay unchanged.
+abstract class KycRepository {
+  Future<KycProfile> load();
 
-final kycRepositoryProvider = Provider<KycRepository>(
-  (ref) => KycRepository(ref.watch(apiClientProvider)),
-);
+  Future<KycProfile> submitDocument(
+    KycStepKind kind, {
+    required PickedDocument document,
+  });
 
-class KycRepository {
-  KycRepository(this._api);
+  Future<KycProfile> submitPersonalDetails(Map<String, String> details);
 
-  final ApiClient _api;
+  /// Demo admin action; in Track B this is an authenticated admin endpoint.
+  Future<KycProfile> decide(
+    KycStepKind kind,
+    KycStatus decision, {
+    String? reason,
+  });
 
-  Future<KycStatus> getStatus() async {
-    try {
-      final res = await _api.dio.get('/me/kyc');
-      return KycStatus.fromJson(res.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw ApiException.fromDio(e);
-    }
-  }
-
-  Future<KycStatus> verifyStep(String stepId) async {
-    try {
-      final res = await _api.dio.post('/me/kyc/steps/$stepId/verify');
-      return KycStatus.fromJson(res.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw ApiException.fromDio(e);
-    }
-  }
+  Future<KycProfile> approveAll();
 }
+
+final kycRepositoryProvider = Provider<KycRepository>((ref) {
+  return MockKycRepository(api: ref.watch(apiClientProvider));
+});
