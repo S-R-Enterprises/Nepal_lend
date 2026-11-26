@@ -2,7 +2,7 @@ import 'package:nepal_lend/core/utils/demo_clock.dart';
 import 'package:nepal_lend/data/mock/mock_db.dart';
 import 'package:nepal_lend/data/models/app_notification.dart';
 import 'package:nepal_lend/data/models/enums.dart';
-import 'package:nepal_lend/features/notifications/data/mock_fcm_bus.dart';
+import 'package:nepal_lend/features/notifications/data/notification_event_bus.dart';
 import 'package:uuid/uuid.dart';
 
 /// Writes notification rows and emits the matching mock FCM event. Every
@@ -34,7 +34,7 @@ class NotificationService {
       route: route,
     );
     await _db.setNotification(notification);
-    MockFcmBus.instance.publish(notification);
+    NotificationEventBus.instance.publish(notification);
     return notification;
   }
 

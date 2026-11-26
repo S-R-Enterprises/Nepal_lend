@@ -4,12 +4,16 @@ import 'package:nepal_lend/core/config/env.dart';
 import 'package:nepal_lend/core/network/mock_adapter.dart';
 import 'package:nepal_lend/core/utils/error_mapper.dart';
 import 'package:nepal_lend/data/mock/mock_db.dart';
+import 'package:nepal_lend/features/auth/data/firebase_token_provider.dart';
 import 'package:uuid/uuid.dart';
 
 final envProvider = Provider<Env>((ref) => Env.fromEnvironment());
 
 final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient(env: ref.watch(envProvider));
+  return ApiClient(
+    env: ref.watch(envProvider),
+    tokenProvider: ref.read(firebaseIdTokenProvider),
+  );
 });
 
 /// Single HTTP entry point for repositories. In mock mode the transport is

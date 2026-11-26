@@ -1,5 +1,6 @@
 import 'package:nepal_lend/core/network/api_client.dart';
 import 'package:nepal_lend/core/utils/error_mapper.dart';
+import 'package:nepal_lend/core/utils/phone_number.dart';
 import 'package:nepal_lend/data/mock/mock_db.dart';
 import 'package:nepal_lend/data/models/app_user.dart';
 import 'package:nepal_lend/features/auth/data/auth_repository.dart';
@@ -101,19 +102,13 @@ class MockAuthRepository implements AuthRepository {
     await MockDb.instance.clear();
   }
 
-  static String normalizePhone(String phone) =>
-      phone.replaceAll(RegExp(r'[^0-9]'), '');
+  static String normalizePhone(String phone) => NepaliPhone.normalize(phone);
 
   /// Strip the country code so code requests and verification use one key.
-  static String localDigits(String phone) {
-    final digits = normalizePhone(phone);
-    return digits.startsWith('977') ? digits.substring(3) : digits;
-  }
+  static String localDigits(String phone) => NepaliPhone.localDigits(phone);
 
-  static String toE164(String phone) => '+977${localDigits(phone)}';
+  static String toE164(String phone) => NepaliPhone.toE164(phone);
 
-  static bool isValidNepaliMobile(String digits) {
-    final local = digits.startsWith('977') ? digits.substring(3) : digits;
-    return RegExp(r'^9[0-9]{9}$').hasMatch(local);
-  }
+  static bool isValidNepaliMobile(String digits) =>
+      NepaliPhone.isValid(digits);
 }

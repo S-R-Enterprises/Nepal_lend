@@ -176,7 +176,11 @@ void main() {
   });
 
   testWidgets('wallet screen renders with balance', (tester) async {
-    await container.read(walletControllerProvider.notifier).topUp(50000000);
+    // MockAdapter simulates latency with a real timer; runAsync lets it fire
+    // before the widget tree is pumped.
+    await tester.runAsync(
+      () => container.read(walletControllerProvider.notifier).topUp(50000000),
+    );
     await pumpScreen(
       tester,
       const WalletScreen(),
@@ -198,8 +202,9 @@ void main() {
   });
 
   testWidgets('transaction receipt screen renders', (tester) async {
-    final receipt =
-        await container.read(walletControllerProvider.notifier).topUp(50000000);
+    final receipt = await tester.runAsync(
+      () => container.read(walletControllerProvider.notifier).topUp(50000000),
+    );
     await pumpScreen(
       tester,
       TransactionReceiptScreen(journalId: receipt!.journalId),
@@ -251,7 +256,9 @@ void main() {
   testWidgets('fund loan screen renders', (tester) async {
     await setRole(UserRole.lender);
     await seedLenderLoan();
-    await container.read(walletControllerProvider.notifier).topUp(50000000);
+    await tester.runAsync(
+      () => container.read(walletControllerProvider.notifier).topUp(50000000),
+    );
     await pumpScreen(
       tester,
       const FundLoanScreen(loanId: 'lender-loan-1'),

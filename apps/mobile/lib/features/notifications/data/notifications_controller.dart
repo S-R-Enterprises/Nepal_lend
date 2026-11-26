@@ -97,7 +97,7 @@ final notificationsControllerProvider =
   NotificationsController.new,
 );
 
-/// Mock FCM events. Screens listen to this and refresh the inbox/badge.
+/// Local and FCM notification events. Screens listen to refresh the inbox/badge.
 final notificationEventsProvider = StreamProvider<AppNotification>((ref) {
   return ref.watch(notificationsRepositoryProvider).events;
 });

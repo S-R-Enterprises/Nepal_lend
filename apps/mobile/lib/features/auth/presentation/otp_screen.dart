@@ -4,11 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:nepal_lend/core/network/api_client.dart';
 import 'package:nepal_lend/core/theme/app_theme.dart';
 import 'package:nepal_lend/core/theme/ui.dart';
 import 'package:nepal_lend/features/auth/data/auth_controller.dart';
-import 'package:nepal_lend/features/auth/data/mock_auth_repository.dart';
 import 'package:nepal_lend/l10n/l10n.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
@@ -73,7 +71,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final l10n = L10n.of(context);
     final auth = ref.watch(authProvider);
     final phone = auth.pendingPhone;
-    final isMock = ref.watch(envProvider).isMock;
 
     if (phone == null) {
       return Scaffold(
@@ -146,14 +143,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   onPressed: _verify,
                   expand: true,
                 ),
-                if (isMock) ...[
-                  const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    l10n.otpDemoCodeNotice(MockAuthRepository.demoCode),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12, color: AppColors.muted),
-                  ),
-                ],
               ],
             ),
           ),

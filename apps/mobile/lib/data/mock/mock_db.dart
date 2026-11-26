@@ -164,6 +164,14 @@ class MockDb {
     await persist();
   }
 
+  /// Clears only the signed-in identity. Mock ledgers and loans survive a
+  /// Firebase sign-out so a different phone can sign in on the same device.
+  Future<void> clearSession() async {
+    currentUser = null;
+    kycProfile = null;
+    await persist();
+  }
+
   Future<void> clear() async {
     currentUser = null;
     kycProfile = null;

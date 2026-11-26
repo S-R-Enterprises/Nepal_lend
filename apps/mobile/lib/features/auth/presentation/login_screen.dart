@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:nepal_lend/core/network/api_client.dart';
 import 'package:nepal_lend/core/theme/app_theme.dart';
 import 'package:nepal_lend/core/theme/ui.dart';
+import 'package:nepal_lend/core/utils/phone_number.dart';
 import 'package:nepal_lend/features/auth/data/auth_controller.dart';
-import 'package:nepal_lend/features/auth/data/mock_auth_repository.dart';
 import 'package:nepal_lend/l10n/l10n.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -38,7 +37,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
     final auth = ref.watch(authProvider);
-    final isMock = ref.watch(envProvider).isMock;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.signInTitle)),
@@ -67,12 +65,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   controller: _phoneController,
                   prefixText: l10n.nepalPhonePrefix,
                   keyboardType: TextInputType.phone,
-                  validator: (value) {
-                    final digits = MockAuthRepository.normalizePhone(value ?? '');
-                    return MockAuthRepository.isValidNepaliMobile(digits)
-                        ? null
-                        : l10n.invalidMobileNumberError;
-                  },
+                  validator: (value) => NepaliPhone.isValid(value ?? '')
+                      ? null
+                      : l10n.invalidMobileNumberError,
                 ),
                 if (auth.error != null) ...[
                   const SizedBox(height: AppSpacing.md),
@@ -85,23 +80,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: _sendCode,
                   expand: true,
                 ),
-                if (isMock) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  AppButton(
-                    label: l10n.useDemoAccountButton,
-                    variant: AppButtonVariant.secondary,
-                    expand: true,
-                    onPressed: () async {
-                      await ref.read(authProvider.notifier).demoSignIn();
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    l10n.loginDemoCodeHint,
-                    style: const TextStyle(fontSize: 12, color: AppColors.muted),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
               ],
             ),
           ),

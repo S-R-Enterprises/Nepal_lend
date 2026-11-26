@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nepal_lend/core/network/api_client.dart';
 import 'package:nepal_lend/data/models/app_notification.dart';
-import 'package:nepal_lend/features/notifications/data/mock_fcm_bus.dart';
+import 'package:nepal_lend/features/notifications/data/notification_event_bus.dart';
 
 /// Notification boundary. Track B keeps the same inbox contract while FCM
 /// delivers the upstream event instead of the in-process mock stream.
@@ -45,5 +45,5 @@ class MockNotificationsRepository implements NotificationsRepository {
   }
 
   @override
-  Stream<AppNotification> get events => MockFcmBus.instance.events;
+  Stream<AppNotification> get events => NotificationEventBus.instance.events;
 }

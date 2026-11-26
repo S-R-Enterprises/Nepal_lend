@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "561524440176",
+    "project_id": "nepal-lend",
+    "storage_bucket": "nepal-lend.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:561524440176:android:a6b569113d26bdc01d08b5",
+        "android_client_info": {
+          "package_name": "com.example.nepal_lend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC03rPkYyD4VHZ40KWPmJeeKURvUKdo8Ko"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

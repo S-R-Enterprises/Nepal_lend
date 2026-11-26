@@ -54,4 +54,5 @@ android/key.properties
 *.jks
 *.keystore
 google-services.json
+!android/app/google-services.json
 *service-account*.json

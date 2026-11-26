@@ -7,6 +7,7 @@ import 'package:nepal_lend/core/network/api_client.dart';
 import 'package:nepal_lend/data/mock/mock_db.dart';
 import 'package:nepal_lend/features/auth/presentation/login_screen.dart';
 import 'package:nepal_lend/features/styleguide/presentation/style_guide_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Screenshot pass for the assignment submission.
 ///
@@ -25,7 +26,10 @@ Widget _app(Widget child) => ProviderScope(
     );
 
 void main() {
-  setUp(() async => MockDb.instance.clear());
+  setUp(() async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    await MockDb.instance.clear();
+  });
 
   testWidgets('screenshot: splash', (tester) async {
     tester.view.physicalSize = const Size(1080, 1920);
@@ -42,6 +46,9 @@ void main() {
       find.byType(NepalLendApp),
       matchesGoldenFile('../../screenshots/splash.png'),
     );
+
+    // Flush AuthController.restore()'s 3s timeout so no timer is left pending.
+    await tester.pump(const Duration(seconds: 4));
   });
 
   testWidgets('screenshot: login', (tester) async {

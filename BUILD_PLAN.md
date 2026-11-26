@@ -121,13 +121,15 @@ Work each phase as a **vertical slice**: model → provider/service → screen �
 
 **Exit check:** `flutter analyze` and `flutter test` green; app runs with `flutter run --dart-define=ENV=mock`; style-guide screen renders; deep links to every route work.
 
-### Phase 2 — Auth & role slice (mock)
+### Phase 2 — Auth & role slice (Firebase Phone OTP)
 
-**Goal:** sign-in flow works end-to-end with a fake phone/code, persists across restarts, role gates the shell.
+**Goal:** sign-in flow works end-to-end with a real SMS code, persists across restarts, role gates the shell.
 
 - [x] Screens: `/splash`, `/onboarding`, `/login` (phone entry, `+977` prefix, validation), `/otp` (6-digit, resend timer, error states), `/role-selection`.
-- [x] `AuthRepository` interface + `MockAuthRepository`: fixed demo code shown **only in mock UI**; simulated wrong-code / too-many-requests / offline errors; secure-storage session persistence.
-- [x] `ApiClient` interceptor attaches a fake ID token in mock mode; retries once on 401; maps errors via `error_mapper.dart`.
+- [x] `AuthRepository` interface with `FirebaseAuthRepository` as the default at runtime; `MockAuthRepository` retained only for tests without Firebase.
+- [x] Firebase project `nepal-lend`, Android app `com.example.nepal_lend`, generated `firebase_options.dart` / `google-services.json`, debug SHA-1 registered.
+- [x] Firebase Auth exception codes mapped to stable `AppFailure` codes/messages; ID token attached by `ApiClient` and refreshed on 401.
+- [x] FCM permission/token registration and foreground notification display; payloads share the in-app `NotificationEventBus`.
 - [x] `POST /auth/session`, `GET/PATCH /me` mock endpoints in `mock_adapter.dart`; user upsert keyed by phone.
 - [x] Splash redirect from auth state stream; role stored in the user model, set once.
 - [x] Widget tests: phone validation, wrong code, resend timer, role selection; provider tests for redirect logic.
@@ -193,7 +195,7 @@ Work each phase as a **vertical slice**: model → provider/service → screen �
 
 - [x] `/borrower/repay`: next instalment (principal + interest split), schedule list, pay with simulated eSewa/Khalti, confirmation + receipt.
 - [x] `RepaymentService`: pro-rata split across stakes by **largest remainder** so parts sum exactly; fee journal; mark instalment paid; close loan on last instalment; overdue marker the day after `due_date`.
-- [x] `Notifier`: in-app notification rows + mock FCM event (`MockFcmBus`); `/notifications`, mark one / mark all read; badge count.
+- [x] `Notifier`: in-app notification rows on one `NotificationEventBus` (local events and FCM payloads); `/notifications`, mark one / mark all read; badge count.
 - [x] Mock scheduled jobs: reminders (3 days before, on day, after), overdue marking, nightly reconciliation check that all journals sum to 0; mock-only demo panel drives a fast-forward clock.
 - [x] Tests: pro-rata exactness with awkward ratios, late payment, loan closure, notification state, repayment/inbox widget flows and job endpoints.
 
@@ -278,7 +280,7 @@ Only start after Track A's exit checks pass and the Stage 0 decisions are final.
 1. **Stage 1** monorepo/CI/local env (if you chose the monorepo layout in Stage 0) — `apps/mobile`, `apps/api`, `packages/api-spec`, `infra/docker-compose.yml`, GitHub Actions.
 2. **Stage 2** Firebase projects (dev/staging/prod), per-flavor Android apps, SHA fingerprints, test numbers, NP-only SMS policy, App Check, private Storage bucket, service accounts; Render Postgres (paid, Singapore) + web service; `/api/v1/health` green.
 3. **Stage 3** API foundation: config validation, Prisma 7 + pg adapter, firebase-admin, middleware (request id, logger, rate limit, token verify, loadUser, requireRole, requireKyc, validate, errors), first migration, Sentry.
-4. **Stage 4** real auth: `POST /auth/session`, `/me`, logout, device tokens; swap `MockAuthRepository` for Firebase implementation; ApiClient attaches real ID token.
+4. **Stage 4** real auth (client side done): Firebase phone OTP, FIRAuth UID/phone profile mapping, ID-token interceptor and FCM token registration are in place. Remaining: server-side `POST /auth/session`, `/me`, logout and device-token persistence with `firebase-admin` verification.
 5. **Stage 5** real KYC with signed upload URLs; admin decision endpoint; audit log of document access.
 6. **Stage 6** real ledger schema (immutable tables, revoke UPDATE/DELETE), idempotency middleware, payment provider adapter + webhooks.
 7. **Stage 7–9** loans/risk, funding (row lock), agreements, disbursement, repayments, pro-rata, jobs, FCM notifier.
@@ -292,14 +294,14 @@ Replace Track A's mock repositories with HTTP implementations behind the same in
 
 ## 10. Immediate next actions (in order)
 
-Phases 1–7 are complete and verified: `flutter analyze` is clean, all 111 tests
-pass, and the debug APK builds. Next:
+Phases 1–8 plus the Firebase client integration are implemented: `flutter analyze`
+is clean, localization/accessibility/states are in place, and the debug APK
+builds. Next:
 
-1. Start Phase 8: ARB scaffolding (English first, sample Nepali), accessibility
-   pass (semantics, 360 dp, 1.3× font scale, ≥48 dp touch targets).
-2. Add the missing loading/error/offline states to remaining lists and details.
+1. Enable **Phone** in Firebase console → Authentication → Sign-in method.
+2. Verify OTP on a device/emulator with a real or Firebase test number.
 3. Add a widget test per screen and check service coverage above 80%.
-4. Take the screenshot pass and rewrite the README for the final submission.
+4. Take the screenshot pass and finalise the README for submission.
 5. Run `flutter analyze` + `flutter test` + `flutter build apk --debug` again.
 
 **Rule for every phase:** no phase is "done" until its exit check passes and CI is green.
