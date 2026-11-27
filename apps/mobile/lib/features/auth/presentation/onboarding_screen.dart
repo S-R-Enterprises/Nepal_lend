@@ -43,6 +43,13 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _pageController = PageController();
   int _page = 0;
+  late List<_Slide> _slides;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _slides = _buildSlides(context);
+  }
 
   @override
   void dispose() {
@@ -51,8 +58,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _next(BuildContext context) {
-    final slides = _buildSlides(context);
-    if (_page == slides.length - 1) {
+    if (_page == _slides.length - 1) {
       context.go('/login');
       return;
     }
@@ -65,7 +71,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
-    final slides = _buildSlides(context);
+    final slides = _slides;
     return Scaffold(
       body: SafeArea(
         child: Column(

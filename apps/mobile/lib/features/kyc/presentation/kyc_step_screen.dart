@@ -267,7 +267,13 @@ class _DocumentCapture extends StatelessWidget {
                 child: Image.file(
                   File(document!.path),
                   height: 200,
+                  cacheWidth: (MediaQuery.sizeOf(context).width *
+                          MediaQuery.devicePixelRatioOf(context))
+                      .round(),
+                  cacheHeight: (200 * MediaQuery.devicePixelRatioOf(context))
+                      .round(),
                   fit: BoxFit.cover,
+                  gaplessPlayback: true,
                   errorBuilder: (_, _, _) => Container(
                     height: 200,
                     color: AppColors.outline.withValues(alpha: 0.25),
@@ -295,6 +301,8 @@ class _DocumentCapture extends StatelessWidget {
 }
 
 class _PersonalDetailsForm extends StatelessWidget {
+  static final RegExp accountNumberPattern = RegExp(r'^[0-9]{5,20}$');
+
   const _PersonalDetailsForm({
     required this.formKey,
     required this.fullName,
@@ -361,7 +369,7 @@ class _PersonalDetailsForm extends StatelessWidget {
             controller: accountNumber,
             keyboardType: TextInputType.number,
             validator: (value) => value == null ||
-                    !RegExp(r'^[0-9]{5,20}$').hasMatch(value.trim())
+                    !accountNumberPattern.hasMatch(value.trim())
                 ? l10n.enterFiveToTwentyDigitsError
                 : null,
           ),

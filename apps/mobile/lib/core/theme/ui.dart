@@ -203,22 +203,20 @@ class FundingProgress extends StatelessWidget {
         ? 0.0
         : (fundedPaisa / amountPaisa).clamp(0.0, 1.0);
     final l10n = L10n.of(context);
+    final label = l10n.fundingProgressText(
+      formatNPRCompact(fundedPaisa),
+      (progress * 100).round(),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Semantics(
-          label: l10n.fundingProgressText(
-            formatNPRCompact(fundedPaisa),
-            (progress * 100).round(),
-          ),
+          label: label,
           child: LinearProgressIndicator(value: progress, minHeight: 8),
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          l10n.fundingProgressText(
-            formatNPRCompact(fundedPaisa),
-            (progress * 100).round(),
-          ),
+          label,
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       ],
@@ -411,7 +409,7 @@ class StepIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: List<int>.generate(total, (index) => index).map((index) {
+      children: List<Widget>.generate(total, (index) {
         final done = index < completed;
         return Expanded(
           child: Container(
@@ -423,7 +421,7 @@ class StepIndicator extends StatelessWidget {
             ),
           ),
         );
-      }).toList(),
+      }),
     );
   }
 }

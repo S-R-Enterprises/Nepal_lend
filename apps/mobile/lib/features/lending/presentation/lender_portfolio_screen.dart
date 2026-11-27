@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:nepal_lend/core/theme/app_theme.dart';
 import 'package:nepal_lend/core/theme/ui.dart';
 import 'package:nepal_lend/core/utils/format_npr.dart';
+import 'package:nepal_lend/data/models/loan.dart';
 import 'package:nepal_lend/features/lending/data/lending_controller.dart';
 import 'package:nepal_lend/features/lending/presentation/lending_ui.dart';
 import 'package:nepal_lend/l10n/l10n.dart';
@@ -31,10 +32,10 @@ class _LenderPortfolioScreenState extends ConsumerState<LenderPortfolioScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(lendingControllerProvider);
     final l10n = L10n.of(context);
-    final active = state.stakes.where((stake) => stake.isActive).fold<int>(
-          0,
-          (sum, stake) => sum + stake.amountPaisa,
-        );
+    var active = 0;
+    for (final stake in state.stakes) {
+      if (stake.isActive) active += stake.amountPaisa;
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.portfolioTitle)),
@@ -63,41 +64,59 @@ class _LenderPortfolioScreenState extends ConsumerState<LenderPortfolioScreen> {
                     .loadStakes(),
                 emptyTitle: l10n.noStakesYet,
                 emptyMessage: l10n.noStakesMessage,
-                builder: (_) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: state.stakes.map(
-                  (stake) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: AppCard(
-                      onTap: () => context.go('/stakes/${stake.id}'),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  l10n.stakeInLoanText(stake.loanId),
-                                  style: Theme.of(context).textTheme.titleSmall,
-                                ),
-                                const SizedBox(height: AppSpacing.xs),
-                                Text(formatNPRCompact(stake.amountPaisa)),
-                              ],
-                            ),
-                          ),
-                          StatusChip(
-                            label: stakeStatusLabel(context, stake.status),
-                            tone: stakeStatusTone(stake.status),
-                          ),
-                        ],
-                      ),
-                    ),
+                builder: (_) => ListView.builder(
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: state.stakes.length,
+                  itemBuilder: (context, index) => _StakeTile(
+                    stake: state.stakes[index],
+                    onTap: () =>
+                        context.go('/stakes/${state.stakes[index].id}'),
                   ),
-                ).toList(),
-              ),
+                ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StakeTile extends StatelessWidget {
+  const _StakeTile({required this.stake, required this.onTap});
+
+  final Stake stake;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: AppCard(
+        onTap: onTap,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.stakeInLoanText(stake.loanId),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(formatNPRCompact(stake.amountPaisa)),
+                ],
+              ),
+            ),
+            StatusChip(
+              label: stakeStatusLabel(context, stake.status),
+              tone: stakeStatusTone(stake.status),
+            ),
+          ],
         ),
       ),
     );

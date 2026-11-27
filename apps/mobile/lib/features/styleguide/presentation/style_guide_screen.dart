@@ -20,18 +20,6 @@ class _StyleGuideScreenState extends State<StyleGuideScreen> {
     super.dispose();
   }
 
-  Widget _section(String title, List<Widget> children) => Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.md),
-            ...children,
-          ],
-        ),
-      );
-
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
@@ -42,7 +30,7 @@ class _StyleGuideScreenState extends State<StyleGuideScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _section(l10n.styleGuideColoursSection, [
+            _Section(title: l10n.styleGuideColoursSection, children: [
               Wrap(
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
@@ -60,7 +48,7 @@ class _StyleGuideScreenState extends State<StyleGuideScreen> {
                 ],
               ),
             ]),
-            _section(l10n.styleGuideTypographySection, [
+            _Section(title: l10n.styleGuideTypographySection, children: [
               Text(
                 l10n.typographyDisplayTitle,
                 style: Theme.of(context).textTheme.displayMedium,
@@ -78,7 +66,7 @@ class _StyleGuideScreenState extends State<StyleGuideScreen> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ]),
-            _section(l10n.styleGuideButtonsSection, [
+            _Section(title: l10n.styleGuideButtonsSection, children: [
               AppButton(label: l10n.styleGuidePrimaryAction),
               const SizedBox(height: AppSpacing.sm),
               AppButton(
@@ -93,7 +81,7 @@ class _StyleGuideScreenState extends State<StyleGuideScreen> {
                 variant: AppButtonVariant.text,
               ),
             ]),
-            _section(l10n.styleGuideInputsSection, [
+            _Section(title: l10n.styleGuideInputsSection, children: [
               AppInput(
                 label: l10n.loanAmountLabel,
                 hint: l10n.styleGuideAmountHint,
@@ -102,7 +90,7 @@ class _StyleGuideScreenState extends State<StyleGuideScreen> {
                 keyboardType: TextInputType.number,
               ),
             ]),
-            _section(l10n.styleGuideCardsSection, [
+            _Section(title: l10n.styleGuideCardsSection, children: [
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -114,7 +102,7 @@ class _StyleGuideScreenState extends State<StyleGuideScreen> {
                 ),
               ),
             ]),
-            _section(l10n.styleGuideProgressSection, [
+            _Section(title: l10n.styleGuideProgressSection, children: [
               const FundingProgress(fundedPaisa: 12800000, amountPaisa: 20000000),
               const SizedBox(height: AppSpacing.md),
               Wrap(
@@ -129,7 +117,7 @@ class _StyleGuideScreenState extends State<StyleGuideScreen> {
               const SizedBox(height: AppSpacing.md),
               const StepIndicator(total: 4, completed: 2),
             ]),
-            _section(l10n.styleGuideStatesSection, [
+            _Section(title: l10n.styleGuideStatesSection, children: [
               const SkeletonLoader(height: 20),
               const SizedBox(height: AppSpacing.md),
               EmptyState(
@@ -141,7 +129,7 @@ class _StyleGuideScreenState extends State<StyleGuideScreen> {
                 onRetry: () {},
               ),
             ]),
-            _section(l10n.styleGuideBottomSheetSection, [
+            _Section(title: l10n.styleGuideBottomSheetSection, children: [
               AppButton(
                 label: l10n.openConfirmationSheetButton,
                 variant: AppButtonVariant.secondary,
@@ -165,6 +153,26 @@ class _StyleGuideScreenState extends State<StyleGuideScreen> {
       ),
     );
   }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: AppSpacing.md),
+            ...children,
+          ],
+        ),
+      );
 }
 
 class _Swatch extends StatelessWidget {

@@ -18,6 +18,8 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  final _timeLabels = <int, String>{};
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +40,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       context.go(route);
     }
   }
+
+  String _timeLabel(DateTime createdAt) => _timeLabels.putIfAbsent(
+        createdAt.millisecondsSinceEpoch,
+        () => createdAt.toLocal().toString().split('.').first,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -84,55 +91,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 onRetry: _reload,
                 emptyTitle: l10n.noNotificationsYet,
                 emptyMessage: l10n.noNotificationsMessage,
-                builder: (_) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: state.items.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: AppCard(
-                        semanticsLabel: item.title,
-                        onTap: () => _open(item),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ExcludeSemantics(child: Icon(_iconFor(item.type))),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          item.title,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                      if (item.isUnread)
-                                        StatusChip(
-                                          label: l10n.notificationNewChip,
-                                          tone: AppTone.warning,
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: AppSpacing.xs),
-                                  Text(item.body),
-                                  const SizedBox(height: AppSpacing.xs),
-                                  Text(
-                                    item.createdAt.toLocal().toString().split('.').first,
-                                    style: Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ).toList(),
+                builder: (_) => ListView.builder(
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: state.items.length,
+                  itemBuilder: (context, index) => _NotificationTile(
+                    item: state.items[index],
+                    timeLabel: _timeLabel(state.items[index].createdAt),
+                    onOpen: _open,
+                  ),
                 ),
               ),
             ],
@@ -141,14 +109,74 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       ),
     );
   }
-
-  IconData _iconFor(NotificationType type) => switch (type) {
-        NotificationType.kycApproved => Icons.verified_outlined,
-        NotificationType.kycRejected => Icons.error_outline,
-        NotificationType.loanFunded => Icons.account_balance_wallet_outlined,
-        NotificationType.loanExpired => Icons.event_busy_outlined,
-        NotificationType.paymentDue => Icons.schedule_outlined,
-        NotificationType.paymentReceived => Icons.receipt_long_outlined,
-        NotificationType.security => Icons.lock_outline,
-      };
 }
+
+class _NotificationTile extends StatelessWidget {
+  const _NotificationTile({
+    required this.item,
+    required this.timeLabel,
+    required this.onOpen,
+  });
+
+  final AppNotification item;
+  final String timeLabel;
+  final Future<void> Function(AppNotification item) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: AppCard(
+        semanticsLabel: item.title,
+        onTap: () => onOpen(item),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ExcludeSemantics(child: Icon(_iconFor(item.type))),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      if (item.isUnread)
+                        StatusChip(
+                          label: l10n.notificationNewChip,
+                          tone: AppTone.warning,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(item.body),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    timeLabel,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+IconData _iconFor(NotificationType type) => switch (type) {
+      NotificationType.kycApproved => Icons.verified_outlined,
+      NotificationType.kycRejected => Icons.error_outline,
+      NotificationType.loanFunded => Icons.account_balance_wallet_outlined,
+      NotificationType.loanExpired => Icons.event_busy_outlined,
+      NotificationType.paymentDue => Icons.schedule_outlined,
+      NotificationType.paymentReceived => Icons.receipt_long_outlined,
+      NotificationType.security => Icons.lock_outline,
+    };

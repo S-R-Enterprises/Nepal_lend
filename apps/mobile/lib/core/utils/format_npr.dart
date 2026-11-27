@@ -1,8 +1,43 @@
 /// Display helpers for Nepali currency. Amounts are always integer paisa.
+final Map<int, String> _fullCache = <int, String>{};
+final Map<int, String> _compactCache = <int, String>{};
+const int _maxCachedAmounts = 512;
+
 String formatNPR(
   int paisa, {
   bool showPaisa = true,
   bool withSymbol = true,
+}) {
+  if (showPaisa && withSymbol) {
+    return _cached(
+      _fullCache,
+      paisa,
+      () => _formatNPR(paisa, showPaisa: true, withSymbol: true),
+    );
+  }
+  if (!showPaisa && withSymbol) {
+    return _cached(
+      _compactCache,
+      paisa,
+      () => _formatNPR(paisa, showPaisa: false, withSymbol: true),
+    );
+  }
+  return _formatNPR(paisa, showPaisa: showPaisa, withSymbol: withSymbol);
+}
+
+String _cached(Map<int, String> cache, int key, String Function() build) {
+  final cached = cache[key];
+  if (cached != null) return cached;
+  if (cache.length >= _maxCachedAmounts) cache.clear();
+  final value = build();
+  cache[key] = value;
+  return value;
+}
+
+String _formatNPR(
+  int paisa, {
+  required bool showPaisa,
+  required bool withSymbol,
 }) {
   final negative = paisa < 0;
   final absolute = paisa.abs();

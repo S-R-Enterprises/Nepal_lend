@@ -28,7 +28,9 @@ class ImagePickerDocumentPicker implements DocumentPicker {
       source: source == PickSource.camera
           ? ImageSource.camera
           : ImageSource.gallery,
-      imageQuality: 85,
+      maxWidth: 1600,
+      maxHeight: 1200,
+      imageQuality: 80,
     );
     if (file == null) return null;
     return PickedDocument(path: file.path, name: file.name);

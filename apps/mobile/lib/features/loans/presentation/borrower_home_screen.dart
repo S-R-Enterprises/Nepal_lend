@@ -112,57 +112,73 @@ class _BorrowerHomeScreenState extends ConsumerState<BorrowerHomeScreen> {
                     ref.read(loanControllerProvider.notifier).loadMine(),
                 emptyTitle: l10n.noLoanRequestsYet,
                 emptyMessage: l10n.noLoanRequestsMessage,
-                builder: (_) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: state.loans.map(
-                  (loan) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: AppCard(
-                      onTap: () => _open(loan),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  loan.purpose,
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
-                                ),
-                              ),
-                              StatusChip(
-                                label: loanStatusLabel(loan.status, l10n),
-                                tone: loanStatusTone(loan.status),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Row(
-                            children: [
-                              Text(formatNPRCompact(loan.amountPaisa)),
-                              const SizedBox(width: AppSpacing.sm),
-                              Text(
-                                l10n.tenorMonthsText(loan.tenorMonths),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              const Spacer(),
-                              if (loan.riskGrade != null)
-                                RiskBadge(
-                                  grade: loan.riskGrade!,
-                                  band: loan.riskBand?.name ?? 'high',
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                builder: (_) => ListView.builder(
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: state.loans.length,
+                  itemBuilder: (context, index) => _LoanTile(
+                    loan: state.loans[index],
+                    onTap: () => _open(state.loans[index]),
                   ),
-                ).toList(),
-              ),
                 ),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoanTile extends StatelessWidget {
+  const _LoanTile({required this.loan, required this.onTap});
+
+  final Loan loan;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: AppCard(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    loan.purpose,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                StatusChip(
+                  label: loanStatusLabel(loan.status, l10n),
+                  tone: loanStatusTone(loan.status),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Text(formatNPRCompact(loan.amountPaisa)),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  l10n.tenorMonthsText(loan.tenorMonths),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const Spacer(),
+                if (loan.riskGrade != null)
+                  RiskBadge(
+                    grade: loan.riskGrade!,
+                    band: loan.riskBand?.name ?? 'high',
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
     );

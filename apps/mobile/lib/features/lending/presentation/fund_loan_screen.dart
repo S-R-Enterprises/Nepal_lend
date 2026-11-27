@@ -21,8 +21,14 @@ class FundLoanScreen extends ConsumerStatefulWidget {
 }
 
 class _FundLoanScreenState extends ConsumerState<FundLoanScreen> {
+  static const Uuid _uuid = Uuid();
+
   final _amount = TextEditingController();
   String? _localError;
+  int? _cachedTotalInterestPaisa;
+  int? _cachedAmountPaisa;
+  int? _cachedRateBps;
+  int? _cachedTenorMonths;
 
   @override
   void initState() {
@@ -45,14 +51,26 @@ class _FundLoanScreenState extends ConsumerState<FundLoanScreen> {
     super.dispose();
   }
 
+  int _totalInterestPaisa(Loan loan) {
+    if (_cachedTotalInterestPaisa == null ||
+        _cachedAmountPaisa != loan.amountPaisa ||
+        _cachedRateBps != loan.rateBps ||
+        _cachedTenorMonths != loan.tenorMonths) {
+      _cachedTotalInterestPaisa = Money.schedule(
+        principalPaisa: loan.amountPaisa,
+        rateBps: loan.rateBps,
+        tenorMonths: loan.tenorMonths,
+      ).fold<int>(0, (sum, item) => sum + item.interestPaisa);
+      _cachedAmountPaisa = loan.amountPaisa;
+      _cachedRateBps = loan.rateBps;
+      _cachedTenorMonths = loan.tenorMonths;
+    }
+    return _cachedTotalInterestPaisa!;
+  }
+
   int _interestShare(Loan loan, int amount) {
     if (loan.amountPaisa <= 0 || amount <= 0) return 0;
-    final totalInterest = Money.schedule(
-      principalPaisa: loan.amountPaisa,
-      rateBps: loan.rateBps,
-      tenorMonths: loan.tenorMonths,
-    ).fold<int>(0, (sum, item) => sum + item.interestPaisa);
-    return Money.roundDiv(totalInterest * amount, loan.amountPaisa);
+    return Money.roundDiv(_totalInterestPaisa(loan) * amount, loan.amountPaisa);
   }
 
   Future<void> _confirm(Loan loan) async {
@@ -80,7 +98,7 @@ class _FundLoanScreenState extends ConsumerState<FundLoanScreen> {
     final stake = await ref.read(lendingControllerProvider.notifier).fund(
           loanId: loan.id,
           amountPaisa: amount,
-          idempotencyKey: 'fund-${loan.id}-${const Uuid().v4()}',
+          idempotencyKey: 'fund-${loan.id}-${_uuid.v4()}',
         );
     if (!mounted || stake == null) return;
     context.go('/stakes/${stake.id}');
@@ -97,6 +115,7 @@ class _FundLoanScreenState extends ConsumerState<FundLoanScreen> {
     final interest = loan == null ? 0 : _interestShare(loan, amount);
     final fee = Money.feeForInterest(interest);
     final walletAfter = state.walletBalancePaisa - amount;
+    final canFund = loan?.canFund ?? false;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.fundLoanTitle)),
@@ -140,17 +159,22 @@ class _FundLoanScreenState extends ConsumerState<FundLoanScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _row(context, l10n.walletBeforeLabel,
-                                  formatNPR(state.walletBalancePaisa)),
-                              _row(context, l10n.interestShareLabel,
-                                  formatNPR(interest)),
-                              _row(context, l10n.platformFeeLabel,
-                                  formatNPR(fee)),
+                              _SummaryRow(
+                                label: l10n.walletBeforeLabel,
+                                value: formatNPR(state.walletBalancePaisa),
+                              ),
+                              _SummaryRow(
+                                label: l10n.interestShareLabel,
+                                value: formatNPR(interest),
+                              ),
+                              _SummaryRow(
+                                label: l10n.platformFeeLabel,
+                                value: formatNPR(fee),
+                              ),
                               const Divider(),
-                              _row(
-                                context,
-                                l10n.walletAfterLabel,
-                                formatNPR(walletAfter),
+                              _SummaryRow(
+                                label: l10n.walletAfterLabel,
+                                value: formatNPR(walletAfter),
                                 danger: walletAfter < 0,
                               ),
                             ],
@@ -168,7 +192,7 @@ class _FundLoanScreenState extends ConsumerState<FundLoanScreen> {
                           label: l10n.confirmFundingButton,
                           expand: true,
                           loading: state.busy,
-                          onPressed: loan.canFund
+                          onPressed: canFund
                               ? () => _confirm(loan)
                               : null,
                         ),
@@ -185,13 +209,21 @@ class _FundLoanScreenState extends ConsumerState<FundLoanScreen> {
     );
   }
 
-  Widget _row(
-    BuildContext context,
-    String label,
-    String value, {
-    bool danger = false,
-  }) =>
-      Padding(
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    this.danger = false,
+  });
+
+  final String label;
+  final String value;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

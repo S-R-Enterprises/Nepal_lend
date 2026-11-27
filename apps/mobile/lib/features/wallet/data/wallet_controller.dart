@@ -46,6 +46,8 @@ class WalletState {
 /// All money movement goes through this controller. The KYC gate is checked
 /// here, not only by the router, so a deep link cannot bypass verification.
 class WalletController extends Notifier<WalletState> {
+  static const Uuid _uuid = Uuid();
+
   @override
   WalletState build() => const WalletState();
 
@@ -116,9 +118,9 @@ class WalletController extends Notifier<WalletState> {
         }
       }
 
-      final key = idempotencyKey ?? '${kind.name}-${const Uuid().v4()}';
-      final journalId = 'txn-${const Uuid().v4()}';
-      final intentId = 'pi-${const Uuid().v4()}';
+      final key = idempotencyKey ?? '${kind.name}-${_uuid.v4()}';
+      final journalId = 'txn-${_uuid.v4()}';
+      final intentId = 'pi-${_uuid.v4()}';
       final payment = kind == PaymentIntentKind.topup
           ? await _payments.charge(
               amountPaisa: amountPaisa,
@@ -183,8 +185,8 @@ class WalletController extends Notifier<WalletState> {
       state = state.copyWith(busy: true, clearError: true);
       final user = _user;
       final receipt = await _ledger.reverseJournal(
-        journalId: 'txn-${const Uuid().v4()}',
-        paymentIntentId: 'pi-${const Uuid().v4()}',
+        journalId: 'txn-${_uuid.v4()}',
+        paymentIntentId: 'pi-${_uuid.v4()}',
         idempotencyKey: idempotencyKey,
         userId: user.id,
         intentKind: PaymentIntentKind.withdrawal,

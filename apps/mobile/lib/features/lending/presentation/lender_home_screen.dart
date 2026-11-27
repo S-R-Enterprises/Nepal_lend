@@ -31,10 +31,13 @@ class _LenderHomeScreenState extends ConsumerState<LenderHomeScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(lendingControllerProvider);
     final l10n = L10n.of(context);
-    final active = state.stakes.where((stake) => stake.isActive).length;
-    final committed = state.stakes
-        .where((stake) => stake.isActive)
-        .fold<int>(0, (sum, stake) => sum + stake.amountPaisa);
+    var active = 0;
+    var committed = 0;
+    for (final stake in state.stakes) {
+      if (!stake.isActive) continue;
+      active++;
+      committed += stake.amountPaisa;
+    }
 
     return Scaffold(
       appBar: AppBar(

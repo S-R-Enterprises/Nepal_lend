@@ -124,41 +124,8 @@ class _RiskReviewScreenState extends ConsumerState<RiskReviewScreen> {
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        ...?loan.assessment?.factors.map(
-                          (factor) => Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                            child: AppCard(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  StatusChip(
-                                    label: riskDirectionMarker(
-                                      factor.direction,
-                                      l10n,
-                                    ),
-                                    tone: riskDirectionTone(factor.direction),
-                                  ),
-                                  const SizedBox(width: AppSpacing.sm),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          factor.name,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleSmall,
-                                        ),
-                                        Text(factor.note),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+                        if (loan.assessment != null)
+                          _RiskFactorList(factors: loan.assessment!.factors),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
                           l10n.riskModelExplanation(
@@ -195,23 +162,47 @@ class _RiskReviewScreenState extends ConsumerState<RiskReviewScreen> {
   }
 }
 
-class _RepaymentCard extends StatelessWidget {
+class _RepaymentCard extends StatefulWidget {
   const _RepaymentCard({required this.loan});
 
   final Loan loan;
 
   @override
+  State<_RepaymentCard> createState() => _RepaymentCardState();
+}
+
+class _RepaymentCardState extends State<_RepaymentCard> {
+  late int _emi;
+  late int _total;
+  late int _interest;
+  late int _fee;
+
+  @override
+  void initState() {
+    super.initState();
+    _compute();
+  }
+
+  @override
+  void didUpdateWidget(covariant _RepaymentCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.loan != oldWidget.loan) _compute();
+  }
+
+  void _compute() {
+    _emi = Money.installmentPaisa(
+      principalPaisa: widget.loan.amountPaisa,
+      rateBps: widget.loan.rateBps,
+      tenorMonths: widget.loan.tenorMonths,
+    );
+    _total = _emi * widget.loan.tenorMonths;
+    _interest = _total - widget.loan.amountPaisa;
+    _fee = Money.feeForInterest(_interest);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
-    final emi = Money.installmentPaisa(
-      principalPaisa: loan.amountPaisa,
-      rateBps: loan.rateBps,
-      tenorMonths: loan.tenorMonths,
-    );
-    final total = emi * loan.tenorMonths;
-    final interest = total - loan.amountPaisa;
-    final fee = Money.feeForInterest(interest);
-
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -221,16 +212,24 @@ class _RepaymentCard extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: AppSpacing.md),
-          _row(context, l10n.monthlyInstalmentLabel, formatNPR(emi)),
-          _row(context, l10n.totalRepayableLabel, formatNPR(total)),
-          _row(context, l10n.interestLabel, formatNPR(interest)),
-          _row(context, l10n.platformFeeLabel, formatNPR(fee)),
+          _SummaryRow(label: l10n.monthlyInstalmentLabel, value: formatNPR(_emi)),
+          _SummaryRow(label: l10n.totalRepayableLabel, value: formatNPR(_total)),
+          _SummaryRow(label: l10n.interestLabel, value: formatNPR(_interest)),
+          _SummaryRow(label: l10n.platformFeeLabel, value: formatNPR(_fee)),
         ],
       ),
     );
   }
+}
 
-  Widget _row(BuildContext context, String label, String value) => Padding(
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -248,4 +247,57 @@ class _RepaymentCard extends StatelessWidget {
           ],
         ),
       );
+}
+
+class _RiskFactorList extends StatelessWidget {
+  const _RiskFactorList({required this.factors});
+
+  final List<RiskFactor> factors;
+
+  @override
+  Widget build(BuildContext context) => ListView.builder(
+        padding: EdgeInsets.zero,
+        physics: const NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+        itemCount: factors.length,
+        itemBuilder: (context, index) => _RiskFactorTile(factor: factors[index]),
+      );
+}
+
+class _RiskFactorTile extends StatelessWidget {
+  const _RiskFactorTile({required this.factor});
+
+  final RiskFactor factor;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: AppCard(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            StatusChip(
+              label: riskDirectionMarker(factor.direction, l10n),
+              tone: riskDirectionTone(factor.direction),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    factor.name,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  Text(factor.note),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

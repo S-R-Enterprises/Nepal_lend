@@ -26,6 +26,21 @@ class _LoanAgreementScreenState extends ConsumerState<LoanAgreementScreen> {
   final _signedBy = TextEditingController();
   bool _accepted = false;
   String? _localError;
+  Loan? _termsLoan;
+  String _termsText = '';
+  String _termsHash = '';
+
+  void _ensureTerms(Loan loan) {
+    if (_termsLoan == loan) return;
+    _termsText = LoanTerms.text(
+      amountPaisa: loan.amountPaisa,
+      rateBps: loan.rateBps,
+      tenorMonths: loan.tenorMonths,
+      purpose: loan.purpose,
+    );
+    _termsHash = LoanTerms.hash(_termsText);
+    _termsLoan = loan;
+  }
 
   @override
   void initState() {
@@ -68,6 +83,7 @@ class _LoanAgreementScreenState extends ConsumerState<LoanAgreementScreen> {
     final l10n = L10n.of(context);
     final state = ref.watch(loanControllerProvider);
     final loan = state.current?.id == widget.loanId ? state.current : null;
+    if (loan != null) _ensureTerms(loan);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.loanAgreementTitle)),
@@ -97,24 +113,10 @@ class _LoanAgreementScreenState extends ConsumerState<LoanAgreementScreen> {
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                               const SizedBox(height: AppSpacing.sm),
-                              Text(
-                                LoanTerms.text(
-                                  amountPaisa: loan.amountPaisa,
-                                  rateBps: loan.rateBps,
-                                  tenorMonths: loan.tenorMonths,
-                                  purpose: loan.purpose,
-                                ),
-                              ),
+                              Text(_termsText),
                               const SizedBox(height: AppSpacing.md),
                               Text(
-                                l10n.termsHashText(LoanTerms.hash(
-                                  LoanTerms.text(
-                                    amountPaisa: loan.amountPaisa,
-                                    rateBps: loan.rateBps,
-                                    tenorMonths: loan.tenorMonths,
-                                    purpose: loan.purpose,
-                                  ),
-                                )),
+                                l10n.termsHashText(_termsHash),
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
@@ -192,75 +194,38 @@ class _LoanAgreementScreenState extends ConsumerState<LoanAgreementScreen> {
   }
 }
 
-class _ScheduleCard extends StatelessWidget {
+class _ScheduleCard extends StatefulWidget {
   const _ScheduleCard({required this.loan});
 
   final Loan loan;
 
   @override
-  Widget build(BuildContext context) {
-    final l10n = L10n.of(context);
-    final schedule = loan.instalments.isNotEmpty
-        ? loan.instalments
-        : _preview(loan);
-    final total = schedule.fold<int>(
+  State<_ScheduleCard> createState() => _ScheduleCardState();
+}
+
+class _ScheduleCardState extends State<_ScheduleCard> {
+  late List<Instalment> _schedule;
+  late int _total;
+
+  @override
+  void initState() {
+    super.initState();
+    _compute();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ScheduleCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.loan != oldWidget.loan) _compute();
+  }
+
+  void _compute() {
+    _schedule = widget.loan.instalments.isNotEmpty
+        ? widget.loan.instalments
+        : _preview(widget.loan);
+    _total = _schedule.fold<int>(
       0,
       (sum, item) => sum + item.totalPaisa,
-    );
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            l10n.repaymentScheduleWithCount(schedule.length),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ...schedule.map(
-            (item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 28,
-                    child: Text(l10n.instalmentNumberText(item.number)),
-                  ),
-                  Expanded(
-                    child: Text(
-                      l10n.displayDate(
-                        item.dueDate.day,
-                        item.dueDate.month,
-                        item.dueDate.year,
-                      ),
-                    ),
-                  ),
-                  Flexible(
-                    child: Text(
-                      formatNPRCompact(item.totalPaisa),
-                      textAlign: TextAlign.end,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const Divider(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(child: Text(l10n.totalRepayableLabel)),
-              Flexible(
-                child: Text(
-                  formatNPR(total),
-                  textAlign: TextAlign.end,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -282,5 +247,81 @@ class _ScheduleCard extends StatelessWidget {
           ),
         )
         .toList(growable: false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.repaymentScheduleWithCount(_schedule.length),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ListView.builder(
+            padding: EdgeInsets.zero,
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            itemCount: _schedule.length,
+            itemBuilder: (context, index) =>
+                _ScheduleRow(item: _schedule[index]),
+          ),
+          const Divider(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(child: Text(l10n.totalRepayableLabel)),
+              Flexible(
+                child: Text(
+                  formatNPR(_total),
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScheduleRow extends StatelessWidget {
+  const _ScheduleRow({required this.item});
+
+  final Instalment item;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 28,
+            child: Text(l10n.instalmentNumberText(item.number)),
+          ),
+          Expanded(
+            child: Text(
+              l10n.displayDate(
+                item.dueDate.day,
+                item.dueDate.month,
+                item.dueDate.year,
+              ),
+            ),
+          ),
+          Flexible(
+            child: Text(
+              formatNPRCompact(item.totalPaisa),
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

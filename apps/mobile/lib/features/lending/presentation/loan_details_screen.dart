@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:nepal_lend/core/theme/app_theme.dart';
 import 'package:nepal_lend/core/theme/ui.dart';
 import 'package:nepal_lend/core/utils/format_npr.dart';
+import 'package:nepal_lend/data/models/loan.dart';
 import 'package:nepal_lend/features/lending/data/lending_controller.dart';
 import 'package:nepal_lend/features/lending/presentation/lending_ui.dart';
 import 'package:nepal_lend/features/loans/presentation/loan_ui.dart';
@@ -36,6 +37,7 @@ class _LoanDetailsScreenState extends ConsumerState<LoanDetailsScreen> {
     final loan = state.currentLoan?.id == widget.loanId
         ? state.currentLoan
         : null;
+    final canFund = loan?.canFund ?? false;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.loanDetailsTitle)),
@@ -135,16 +137,8 @@ class _LoanDetailsScreenState extends ConsumerState<LoanDetailsScreen> {
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        ...?loan.assessment?.factors.map(
-                          (factor) => Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                            child: AppCard(
-                              child: Text(
-                                l10n.riskFactorLine(factor.name, factor.note),
-                              ),
-                            ),
-                          ),
-                        ),
+                        if (loan.assessment != null)
+                          _RiskFactorList(factors: loan.assessment!.factors),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
                           l10n.modelScoreSummary(
@@ -158,12 +152,12 @@ class _LoanDetailsScreenState extends ConsumerState<LoanDetailsScreen> {
                           label: l10n.fundThisLoanButton,
                           icon: Icons.account_balance_wallet_outlined,
                           expand: true,
-                          onPressed: loan.canFund
+                          onPressed: canFund
                               ? () => context
                                   .go('/lender/fund-loan/${widget.loanId}')
                               : null,
                         ),
-                        if (!loan.canFund) ...[
+                        if (!canFund) ...[
                           const SizedBox(height: AppSpacing.sm),
                           Text(
                             l10n.loanNotOpenForFunding,
@@ -183,5 +177,37 @@ class _LoanDetailsScreenState extends ConsumerState<LoanDetailsScreen> {
     return date == null
         ? l10n.dateToBeConfirmed
         : l10n.displayDate(date.day, date.month, date.year);
+  }
+}
+
+class _RiskFactorList extends StatelessWidget {
+  const _RiskFactorList({required this.factors});
+
+  final List<RiskFactor> factors;
+
+  @override
+  Widget build(BuildContext context) => ListView.builder(
+        padding: EdgeInsets.zero,
+        physics: const NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+        itemCount: factors.length,
+        itemBuilder: (context, index) => _RiskFactorTile(factor: factors[index]),
+      );
+}
+
+class _RiskFactorTile extends StatelessWidget {
+  const _RiskFactorTile({required this.factor});
+
+  final RiskFactor factor;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: AppCard(
+        child: Text(l10n.riskFactorLine(factor.name, factor.note)),
+      ),
+    );
   }
 }

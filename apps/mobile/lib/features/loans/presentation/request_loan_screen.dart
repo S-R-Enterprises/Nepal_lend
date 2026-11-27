@@ -71,8 +71,9 @@ class _RequestLoanScreenState extends ConsumerState<RequestLoanScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
-    final busy = ref.watch(loanControllerProvider).busy;
-    final error = ref.watch(loanControllerProvider).error;
+    final loanState = ref.watch(loanControllerProvider);
+    final busy = loanState.busy;
+    final error = loanState.error;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.requestLoanTitle)),

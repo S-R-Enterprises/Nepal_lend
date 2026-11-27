@@ -49,75 +49,74 @@ class _TransactionReceiptScreenState
             onRetry: () => ref
                 .read(walletControllerProvider.notifier)
                 .loadJournal(widget.journalId),
-            builder: (_) => Column(
+            builder: (_) {
+              final currentJournal = journal!;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: AppColors.success,
+                    size: 56,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    l10n.moneyMoveRecordedText,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  AppCard(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(
-                          Icons.check_circle_outline,
-                          color: AppColors.success,
-                          size: 56,
-                        ),
+                        Text(l10n.referenceLabel),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(formatNPR(_walletCredit(currentJournal))),
                         const SizedBox(height: AppSpacing.md),
+                        Text(l10n.journalIdLine(currentJournal.id)),
+                        Text(l10n.journalTypeLine(currentJournal.kind.name)),
+                        Text(l10n.journalCreatedLine(
+                          currentJournal.createdAt.toLocal(),
+                        )),
+                        if (state.lastReceipt?.replayed ?? false) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          StatusChip(
+                            label: l10n.replayedRequestChip,
+                            tone: AppTone.warning,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                         Text(
-                          l10n.moneyMoveRecordedText,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppColors.success,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          l10n.ledgerEntriesTitle,
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        const SizedBox(height: AppSpacing.xl),
-                        AppCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(l10n.referenceLabel),
-                              const SizedBox(height: AppSpacing.xs),
-                              Text(formatNPR(_walletCredit(journal!))),
-                              const SizedBox(height: AppSpacing.md),
-                              Text(l10n.journalIdLine(journal.id)),
-                              Text(l10n.journalTypeLine(journal.kind.name)),
-                              Text(l10n.journalCreatedLine(
-                                journal.createdAt.toLocal(),
-                              )),
-                              if (state.lastReceipt?.replayed ?? false) ...[
-                                const SizedBox(height: AppSpacing.sm),
-                                StatusChip(
-                                  label: l10n.replayedRequestChip,
-                                  tone: AppTone.warning,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        AppCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                l10n.ledgerEntriesTitle,
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              const SizedBox(height: AppSpacing.sm),
-                              ...journal.entries.map(
-                                (entry) => Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: AppSpacing.xs,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(child: Text(entry.accountId)),
-                                      Text(formatNPR(entry.amountPaisa)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
+                        const SizedBox(height: AppSpacing.sm),
+                        ListView.builder(
+                          padding: EdgeInsets.zero,
+                          physics: const NeverScrollableScrollPhysics(),
+                          shrinkWrap: true,
+                          itemCount: currentJournal.entries.length,
+                          itemBuilder: (context, index) => _JournalEntryTile(
+                            entry: currentJournal.entries[index],
                           ),
                         ),
                       ],
                     ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -133,4 +132,21 @@ class _TransactionReceiptScreenState
     }
     return 0;
   }
+}
+
+class _JournalEntryTile extends StatelessWidget {
+  const _JournalEntryTile({required this.entry});
+
+  final LedgerEntry entry;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        child: Row(
+          children: [
+            Expanded(child: Text(entry.accountId)),
+            Text(formatNPR(entry.amountPaisa)),
+          ],
+        ),
+      );
 }

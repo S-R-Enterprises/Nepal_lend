@@ -6,6 +6,7 @@ import 'package:nepal_lend/core/theme/ui.dart';
 import 'package:nepal_lend/core/utils/format_npr.dart';
 import 'package:nepal_lend/core/utils/money.dart';
 import 'package:nepal_lend/data/models/enums.dart';
+import 'package:nepal_lend/data/models/loan.dart';
 import 'package:nepal_lend/features/lending/data/lending_controller.dart';
 import 'package:nepal_lend/features/loans/presentation/loan_ui.dart';
 import 'package:nepal_lend/l10n/l10n.dart';
@@ -212,62 +213,79 @@ class _LenderBrowseScreenState extends ConsumerState<LenderBrowseScreen> {
                 onRetry: _apply,
                 emptyTitle: l10n.noLoansMatch,
                 emptyMessage: l10n.noLoansMatchMessage,
-                builder: (_) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: state.loans.map(
-                  (loan) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: AppCard(
-                      onTap: () => context
-                          .go('/lender/loan-details/${loan.id}'),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  loan.purpose,
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                ),
-                              ),
-                              if (loan.riskGrade != null)
-                                RiskBadge(
-                                  grade: loan.riskGrade!,
-                                  band: loan.riskBand?.name ?? 'high',
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Row(
-                            children: [
-                              Text(formatNPRCompact(loan.amountPaisa)),
-                              const SizedBox(width: AppSpacing.sm),
-                              Text(
-                                l10n.tenorMonthsShort(loan.tenorMonths),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              const Spacer(),
-                              StatusChip(
-                                label: loanStatusLabel(loan.status, l10n),
-                                tone: loanStatusTone(loan.status),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          FundingProgress(
-                            fundedPaisa: loan.fundedPaisa,
-                            amountPaisa: loan.amountPaisa,
-                          ),
-                        ],
-                      ),
-                    ),
+                builder: (_) => ListView.builder(
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: state.loans.length,
+                  itemBuilder: (context, index) => _BrowseLoanTile(
+                    loan: state.loans[index],
+                    onTap: () => context
+                        .go('/lender/loan-details/${state.loans[index].id}'),
                   ),
-                ).toList(),
-              ),
+                ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BrowseLoanTile extends StatelessWidget {
+  const _BrowseLoanTile({required this.loan, required this.onTap});
+
+  final Loan loan;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: AppCard(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    loan.purpose,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                if (loan.riskGrade != null)
+                  RiskBadge(
+                    grade: loan.riskGrade!,
+                    band: loan.riskBand?.name ?? 'high',
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Text(formatNPRCompact(loan.amountPaisa)),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  l10n.tenorMonthsShort(loan.tenorMonths),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const Spacer(),
+                StatusChip(
+                  label: loanStatusLabel(loan.status, l10n),
+                  tone: loanStatusTone(loan.status),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FundingProgress(
+              fundedPaisa: loan.fundedPaisa,
+              amountPaisa: loan.amountPaisa,
+            ),
+          ],
         ),
       ),
     );

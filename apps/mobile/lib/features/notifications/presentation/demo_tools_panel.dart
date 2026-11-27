@@ -71,9 +71,18 @@ class DemoToolsPanel extends ConsumerWidget {
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.xs,
                 children: [
-                  _clockButton(l10n.clockAdvanceOneDay, const Duration(days: 1)),
-                  _clockButton(l10n.clockAdvanceSevenDays, const Duration(days: 7)),
-                  _clockButton(l10n.clockAdvanceOneMonth, const Duration(days: 30)),
+                  _DemoClockButton(
+                    label: l10n.clockAdvanceOneDay,
+                    duration: const Duration(days: 1),
+                  ),
+                  _DemoClockButton(
+                    label: l10n.clockAdvanceSevenDays,
+                    duration: const Duration(days: 7),
+                  ),
+                  _DemoClockButton(
+                    label: l10n.clockAdvanceOneMonth,
+                    duration: const Duration(days: 30),
+                  ),
                   AppButton(
                     label: l10n.clockResetButton,
                     variant: AppButtonVariant.text,
@@ -93,11 +102,31 @@ class DemoToolsPanel extends ConsumerWidget {
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.xs,
                 children: [
-                  _stateButton(l10n.demoStateNormal, DemoUiState.normal, ref),
-                  _stateButton(l10n.demoStateLoading, DemoUiState.loading, ref),
-                  _stateButton(l10n.demoStateEmpty, DemoUiState.empty, ref),
-                  _stateButton(l10n.demoStateError, DemoUiState.error, ref),
-                  _stateButton(l10n.demoStateOffline, DemoUiState.offline, ref),
+                  _DemoStateButton(
+                    label: l10n.demoStateNormal,
+                    state: DemoUiState.normal,
+                    ref: ref,
+                  ),
+                  _DemoStateButton(
+                    label: l10n.demoStateLoading,
+                    state: DemoUiState.loading,
+                    ref: ref,
+                  ),
+                  _DemoStateButton(
+                    label: l10n.demoStateEmpty,
+                    state: DemoUiState.empty,
+                    ref: ref,
+                  ),
+                  _DemoStateButton(
+                    label: l10n.demoStateError,
+                    state: DemoUiState.error,
+                    ref: ref,
+                  ),
+                  _DemoStateButton(
+                    label: l10n.demoStateOffline,
+                    state: DemoUiState.offline,
+                    ref: ref,
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
@@ -145,13 +174,35 @@ class DemoToolsPanel extends ConsumerWidget {
     );
   }
 
-  Widget _clockButton(String label, Duration duration) => AppButton(
+}
+
+class _DemoClockButton extends StatelessWidget {
+  const _DemoClockButton({required this.label, required this.duration});
+
+  final String label;
+  final Duration duration;
+
+  @override
+  Widget build(BuildContext context) => AppButton(
         label: label,
         variant: AppButtonVariant.secondary,
         onPressed: () => DemoClock.instance.advance(duration),
       );
+}
 
-  Widget _stateButton(String label, DemoUiState state, WidgetRef ref) => AppButton(
+class _DemoStateButton extends StatelessWidget {
+  const _DemoStateButton({
+    required this.label,
+    required this.state,
+    required this.ref,
+  });
+
+  final String label;
+  final DemoUiState state;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) => AppButton(
         label: label,
         variant: AppButtonVariant.text,
         onPressed: () => ref.read(demoUiStateProvider.notifier).select(state),

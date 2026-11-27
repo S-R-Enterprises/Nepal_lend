@@ -5,6 +5,7 @@ import 'package:nepal_lend/core/theme/app_theme.dart';
 import 'package:nepal_lend/core/theme/ui.dart';
 import 'package:nepal_lend/core/utils/demo_clock.dart';
 import 'package:nepal_lend/core/utils/format_npr.dart';
+import 'package:nepal_lend/data/models/loan.dart';
 import 'package:nepal_lend/features/notifications/presentation/notification_badge.dart';
 import 'package:nepal_lend/features/repayments/data/repayment_controller.dart';
 import 'package:nepal_lend/features/wallet/presentation/wallet_confirmation_sheet.dart';
@@ -107,9 +108,13 @@ class _RepaymentScreenState extends ConsumerState<RepaymentScreen> {
                 onRetry: _retry,
                 emptyTitle: l10n.nothingToRepayYet,
                 emptyMessage: l10n.nothingToRepayMessage,
-                builder: (_) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: _buildRepayment(context, state),
+                builder: (_) => _RepaymentDetails(
+                  state: state,
+                  now: DemoClock.instance.now,
+                  onReview: _review,
+                  onProviderChanged: (value) => ref
+                      .read(repaymentControllerProvider.notifier)
+                      .setProvider(value),
                 ),
               ),
             ],
@@ -119,174 +124,231 @@ class _RepaymentScreenState extends ConsumerState<RepaymentScreen> {
     );
   }
 
-  List<Widget> _buildRepayment(
-    BuildContext context,
-    RepaymentState state,
-  ) {
-    final l10n = L10n.of(context);
-    final next = state.next!;
-    return [
-      AppCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.instalmentProgressText(
-                      next.number,
-                      state.schedule.length,
-                    ),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                StatusChip(
-                  label: _statusLabel(context, next.dueDate, state.busy),
-                  tone: AppTone.warning,
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              l10n.dueDateText(
-                next.dueDate.toLocal().toString().split(' ').first,
-              ),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(l10n.amountToPayLabel),
-            const SizedBox(height: AppSpacing.xs),
-            AmountText(paisa: next.totalPaisa, large: true),
-            const SizedBox(height: AppSpacing.md),
-            const Divider(),
-            const SizedBox(height: AppSpacing.sm),
-            _row(l10n.principalLabel, next.principalPaisa),
-            _row(l10n.interestLabel, next.interestPaisa),
-            _row(l10n.platformFeeLabel, -state.feePaisa),
-            const SizedBox(height: AppSpacing.sm),
-            const Divider(),
-            const SizedBox(height: AppSpacing.sm),
-            _row(l10n.lendersReceiveLabel, next.totalPaisa - state.feePaisa),
-          ],
-        ),
-      ),
-      const SizedBox(height: AppSpacing.lg),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            l10n.paymentMethodLabel,
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          DropdownButtonFormField<String>(
-            initialValue: state.provider,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.account_balance_wallet_outlined),
-            ),
-            items: [
-              DropdownMenuItem(
-                value: 'esewa',
-                child: Text(l10n.paymentProviderEsewaLabel),
-              ),
-              DropdownMenuItem(
-                value: 'khalti',
-                child: Text(l10n.paymentProviderKhaltiLabel),
-              ),
-            ],
-            onChanged: (value) => ref
-                .read(repaymentControllerProvider.notifier)
-                .setProvider(value ?? 'esewa'),
-          ),
-        ],
-      ),
-      const SizedBox(height: AppSpacing.lg),
-      AppButton(
-        label: l10n.payAmountButton(formatNPR(next.totalPaisa)),
-        icon: Icons.payment_outlined,
-        expand: true,
-        loading: state.busy,
-        onPressed: _review,
-      ),
-      const SizedBox(height: AppSpacing.xl),
-      Text(
-        l10n.repaymentScheduleTitle,
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      const SizedBox(height: AppSpacing.sm),
-      ...state.schedule.map(
-        (item) => Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-          child: AppCard(
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor:
-                      item.isPaid ? AppColors.success : AppColors.surface,
-                  child: Text(
-                    '${item.number}',
-                    style: TextStyle(
-                      color: item.isPaid ? Colors.white : AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(formatNPR(item.totalPaisa)),
-                      Text(
-                        l10n.dueDateText(
-                          item.dueDate.toLocal().toString().split(' ').first,
-                        ),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                StatusChip(
-                  label: item.isPaid
-                      ? l10n.instalmentPaidChip
-                      : l10n.instalmentDueChip,
-                  tone: item.isPaid ? AppTone.success : AppTone.neutral,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ];
-  }
-
-  Widget _row(String label, int paisa) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(child: Text(label)),
-          Flexible(
-            child: Text(
-              formatNPR(paisa),
-              textAlign: TextAlign.end,
-            ),
-          ),
-        ],
-      );
-
-  String _statusLabel(BuildContext context, DateTime dueDate, bool busy) {
-    final l10n = L10n.of(context);
-    if (busy) return l10n.repaymentStatusProcessing;
-    return DemoClock.instance.now.isAfter(dueDate)
-        ? l10n.repaymentStatusLate
-        : l10n.repaymentStatusNextUp;
-  }
-
   String _providerLabel(BuildContext context, String provider) {
     final l10n = L10n.of(context);
     return provider == 'khalti'
         ? l10n.providerLabelKhalti
         : l10n.providerLabelEsewa;
+  }
+}
+
+class _RepaymentDetails extends StatelessWidget {
+  const _RepaymentDetails({
+    required this.state,
+    required this.now,
+    required this.onReview,
+    required this.onProviderChanged,
+  });
+
+  final RepaymentState state;
+  final DateTime now;
+  final VoidCallback onReview;
+  final ValueChanged<String> onProviderChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    final next = state.next!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _RepaymentSummaryCard(state: state, now: now),
+        const SizedBox(height: AppSpacing.lg),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.paymentMethodLabel,
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            DropdownButtonFormField<String>(
+              initialValue: state.provider,
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: 'esewa',
+                  child: Text(l10n.paymentProviderEsewaLabel),
+                ),
+                DropdownMenuItem(
+                  value: 'khalti',
+                  child: Text(l10n.paymentProviderKhaltiLabel),
+                ),
+              ],
+              onChanged: (value) => onProviderChanged(value ?? 'esewa'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        AppButton(
+          label: l10n.payAmountButton(formatNPR(next.totalPaisa)),
+          icon: Icons.payment_outlined,
+          expand: true,
+          loading: state.busy,
+          onPressed: onReview,
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        Text(
+          l10n.repaymentScheduleTitle,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _InstalmentScheduleList(schedule: state.schedule),
+      ],
+    );
+  }
+}
+
+class _RepaymentSummaryCard extends StatelessWidget {
+  const _RepaymentSummaryCard({required this.state, required this.now});
+
+  final RepaymentState state;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    final next = state.next!;
+    final statusLabel = state.busy
+        ? l10n.repaymentStatusProcessing
+        : now.isAfter(next.dueDate)
+            ? l10n.repaymentStatusLate
+            : l10n.repaymentStatusNextUp;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.instalmentProgressText(
+                    next.number,
+                    state.schedule.length,
+                  ),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              StatusChip(label: statusLabel, tone: AppTone.warning),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            l10n.dueDateText(
+              next.dueDate.toLocal().toString().split(' ').first,
+            ),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(l10n.amountToPayLabel),
+          const SizedBox(height: AppSpacing.xs),
+          AmountText(paisa: next.totalPaisa, large: true),
+          const SizedBox(height: AppSpacing.md),
+          const Divider(),
+          const SizedBox(height: AppSpacing.sm),
+          _SummaryRow(label: l10n.principalLabel, amount: next.principalPaisa),
+          _SummaryRow(label: l10n.interestLabel, amount: next.interestPaisa),
+          _SummaryRow(label: l10n.platformFeeLabel, amount: -state.feePaisa),
+          const SizedBox(height: AppSpacing.sm),
+          const Divider(),
+          const SizedBox(height: AppSpacing.sm),
+          _SummaryRow(
+            label: l10n.lendersReceiveLabel,
+            amount: next.totalPaisa - state.feePaisa,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({required this.label, required this.amount});
+
+  final String label;
+  final int amount;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(child: Text(label)),
+          Flexible(
+            child: Text(
+              formatNPR(amount),
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      );
+}
+
+class _InstalmentScheduleList extends StatelessWidget {
+  const _InstalmentScheduleList({required this.schedule});
+
+  final List<Instalment> schedule;
+
+  @override
+  Widget build(BuildContext context) => ListView.builder(
+        padding: EdgeInsets.zero,
+        physics: const NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+        itemCount: schedule.length,
+        itemBuilder: (context, index) => _InstalmentTile(item: schedule[index]),
+      );
+}
+
+class _InstalmentTile extends StatelessWidget {
+  const _InstalmentTile({required this.item});
+
+  final Instalment item;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: AppCard(
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundColor:
+                  item.isPaid ? AppColors.success : AppColors.surface,
+              child: Text(
+                '${item.number}',
+                style: TextStyle(
+                  color: item.isPaid ? Colors.white : AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(formatNPR(item.totalPaisa)),
+                  Text(
+                    l10n.dueDateText(
+                      item.dueDate.toLocal().toString().split(' ').first,
+                    ),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            StatusChip(
+              label: item.isPaid
+                  ? l10n.instalmentPaidChip
+                  : l10n.instalmentDueChip,
+              tone: item.isPaid ? AppTone.success : AppTone.neutral,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
